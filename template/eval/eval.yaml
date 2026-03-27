@@ -1,0 +1,39 @@
+# Evaluation spec for: skill-name
+# Write this BEFORE implementing the skill (TDD approach)
+
+skill: skill-name
+description: Evaluations for the skill-name skill
+
+scenarios:
+  - name: basic-usage
+    description: Test the most common use case
+    prompt: |
+      Replace with a user prompt that should trigger the skill.
+    expected:
+      # What the skill should produce or do
+      contains:
+        - "expected output substring"
+      behavior:
+        - "description of expected behavior"
+    tags: [smoke]
+
+  - name: edge-case-example
+    description: Test an edge case
+    prompt: |
+      Replace with an edge case prompt.
+    expected:
+      contains:
+        - "expected output for edge case"
+      behavior:
+        - "description of expected edge case handling"
+    tags: [edge-case]
+
+  - name: error-handling
+    description: Test graceful error handling
+    prompt: |
+      Replace with a prompt that should trigger error handling.
+    expected:
+      behavior:
+        - "should handle gracefully without crashing"
+        - "should provide helpful error message"
+    tags: [error-handling]
