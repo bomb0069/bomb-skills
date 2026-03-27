@@ -1,0 +1,37 @@
+{
+  "skill_name": "test-engineer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a registration form with an age field. The valid age range is 18 to 60. Help me create test cases for this field.",
+      "expected_output": "A structured table of BVA test cases with boundary values 17, 18, 19, 59, 60, 61 — each labeled as valid or invalid.",
+      "files": [],
+      "assertions": [
+        "The output includes boundary values 17, 18, 19, 59, 60, 61",
+        "Each test case is labeled as valid or invalid",
+        "The output is presented in a structured table format"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Our booking system accepts appointments between 09:00 and 17:00. Help me create test cases for the time input.",
+      "expected_output": "BVA test cases for time range with boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01.",
+      "files": [],
+      "assertions": [
+        "The output includes time boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01",
+        "Each test case is labeled as valid or invalid",
+        "The output is presented in a structured table format"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I have an input field for \"comments\". Help me create BVA test cases.",
+      "expected_output": "The skill recognizes that a free-text field lacks numeric or time boundaries and asks for clarification or suggests alternative techniques.",
+      "files": [],
+      "assertions": [
+        "The output recognizes that a free-text field is not suitable for BVA",
+        "The output asks for clarification or suggests alternative testing techniques"
+      ]
+    }
+  ]
+}

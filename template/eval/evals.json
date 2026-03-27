@@ -1,0 +1,15 @@
+{
+  "skill_name": "skill-name",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Replace with a realistic user prompt that should trigger the skill.",
+      "expected_output": "Describe what success looks like for this prompt.",
+      "files": [],
+      "assertions": [
+        "The output includes X",
+        "The output handles Y correctly"
+      ]
+    }
+  ]
+}

@@ -17,10 +17,6 @@ python evals/run_evals.py --all
 
 # List available evals
 python evals/run_evals.py --list
-
-# Create a new skill (TDD workflow)
-cp -r template/skill skills/<skill-name>
-cp -r template/eval evals/<skill-name>
 ```
 
 ## Architecture
@@ -28,32 +24,24 @@ cp -r template/eval evals/<skill-name>
 ```
 bomb-skills/
 ├── skills/           # Individual skills (agentskills.io spec)
-├── evals/            # TDD-style evaluations (written BEFORE skills)
-│   └── run_evals.py  # Eval runner
+├── evals/            # Eval specs (agentskills.io JSON format)
+│   ├── <skill-name>/evals.json
+│   └── run_evals.py
+├── <skill-name>-workspace/  # Eval results per iteration
 ├── template/         # Starter templates
-│   ├── skill/        # Skill template (SKILL.md)
-│   └── eval/         # Eval template (eval.yaml)
 └── CLAUDE.md
 ```
 
 ### Key Design Decisions
 
-- **TDD-first**: Always write `evals/<skill-name>/eval.yaml` before implementing the skill
-- **agentskills.io spec**: Each skill's directory name must match its SKILL.md `name` field
-- **Progressive disclosure**: SKILL.md body < 500 lines; split into references/, scripts/, assets/ as needed
-- **Eval-driven development**: Evals define expected behavior as scenarios with prompts and expected outcomes
-
-### Skill Structure (agentskills.io spec)
-
-Every skill directory must contain:
-- `SKILL.md` (required) — YAML frontmatter with `name` + `description`, then markdown instructions
-- `scripts/` (optional) — Executable helper scripts
-- `references/` (optional) — Additional documentation
-- `assets/` (optional) — Templates, images, data files
+- **TDD-first**: Always write `evals/<skill-name>/evals.json` before implementing the skill
+- **agentskills.io eval format**: JSON with `id`, `prompt`, `expected_output`, `assertions`
+- **Workspace results**: `grading.json`, `timing.json`, `benchmark.json`, `feedback.json`
+- **Progressive disclosure**: SKILL.md body < 500 lines; split into references/, scripts/, assets/
 
 ### Workflow
 
-1. Write eval spec in `evals/<skill-name>/eval.yaml`
+1. Write eval spec in `evals/<skill-name>/evals.json`
 2. Run evals — they should fail/skip (skill not yet implemented)
 3. Implement skill in `skills/<skill-name>/`
 4. Run evals — they should pass

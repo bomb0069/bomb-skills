@@ -14,17 +14,23 @@ bomb-skills/
 │       └── assets/        # Optional: templates, resources
 ├── evals/            # TDD-style evaluations (written before implementation)
 │   ├── <skill-name>/
-│   │   ├── eval.yaml      # Eval scenarios and expected outcomes
-│   │   └── cases/         # Test case files
+│   │   └── evals.json     # Eval cases (agentskills.io format)
 │   └── run_evals.py       # Eval runner
-├── template/         # Starter templates for new skills + evals
-├── CLAUDE.md         # Claude Code project instructions
+├── <skill-name>-workspace/  # Eval results (auto-generated)
+│   └── iteration-N/
+│       ├── eval-<id>/
+│       │   ├── with_skill/    # grading.json, timing.json, outputs/
+│       │   └── without_skill/ # grading.json, timing.json, outputs/
+│       ├── benchmark.json
+│       └── feedback.json
+├── template/         # Starter templates
+├── CLAUDE.md
 └── README.md
 ```
 
 ## Workflow (TDD-style)
 
-1. **Define** — Write the skill's eval spec in `evals/<skill-name>/eval.yaml`
+1. **Define** — Write eval cases in `evals/<skill-name>/evals.json`
 2. **Evaluate** — Run evals to confirm they fail (no implementation yet)
 3. **Implement** — Build the skill in `skills/<skill-name>/`
 4. **Validate** — Run evals again to confirm they pass
@@ -37,26 +43,20 @@ cp -r template/skill skills/<skill-name>
 cp -r template/eval evals/<skill-name>
 
 # 2. Edit the eval spec first (TDD)
-# Define expected behavior in evals/<skill-name>/eval.yaml
+# Define expected behavior in evals/<skill-name>/evals.json
 
-# 3. Implement the skill
-# Edit skills/<skill-name>/SKILL.md and add supporting files
+# 3. Run evals (should skip — no implementation)
+python evals/run_evals.py <skill-name>
 
-# 4. Run evals
+# 4. Implement the skill
+# Edit skills/<skill-name>/SKILL.md
+
+# 5. Run evals again (should pass)
 python evals/run_evals.py <skill-name>
 ```
-
-## Skill Specification
-
-Each skill follows the [Agent Skills Specification](https://agentskills.io/specification):
-
-- **`SKILL.md`** is the only required file
-- YAML frontmatter must include `name` and `description`
-- Directory name must match the `name` field
-- Names: lowercase alphanumeric + hyphens, no leading/trailing/consecutive hyphens
-- Progressive disclosure: metadata → instructions → resources
 
 ## References
 
 - [Agent Skills Specification](https://agentskills.io/specification)
+- [Evaluating Skills](https://agentskills.io/skill-creation/evaluating-skills)
 - [Anthropic Skills Repository](https://github.com/anthropics/skills)

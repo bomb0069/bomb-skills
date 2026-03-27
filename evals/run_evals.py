@@ -2,8 +2,10 @@
 """
 Eval runner for bomb-skills.
 
-Loads eval specs from evals/<skill-name>/eval.yaml and runs them
-against the corresponding skill in skills/<skill-name>/.
+Follows the agentskills.io eval format:
+- Evals defined in evals/<skill-name>/evals.json
+- Results stored in <skill-name>-workspace/iteration-N/
+- Outputs: grading.json, timing.json, benchmark.json, feedback.json
 
 Usage:
     python evals/run_evals.py <skill-name>       # Run evals for one skill
@@ -12,82 +14,224 @@ Usage:
 """
 
 import argparse
+import json
 import sys
-import yaml
+import time
+from datetime import datetime
 from pathlib import Path
 
 EVALS_DIR = Path(__file__).parent
-SKILLS_DIR = EVALS_DIR.parent / "skills"
-RESULTS_DIR = EVALS_DIR / "results"
+PROJECT_DIR = EVALS_DIR.parent
+SKILLS_DIR = PROJECT_DIR / "skills"
 
 
 def load_eval_spec(skill_name: str) -> dict:
-    """Load the eval.yaml for a given skill."""
-    eval_file = EVALS_DIR / skill_name / "eval.yaml"
+    """Load the evals.json for a given skill."""
+    eval_file = EVALS_DIR / skill_name / "evals.json"
     if not eval_file.exists():
         print(f"Error: No eval spec found at {eval_file}")
         sys.exit(1)
     with open(eval_file) as f:
-        return yaml.safe_load(f)
+        return json.load(f)
 
 
 def check_skill_exists(skill_name: str) -> bool:
     """Check if the skill implementation exists."""
-    skill_dir = SKILLS_DIR / skill_name
-    skill_md = skill_dir / "SKILL.md"
-    return skill_dir.exists() and skill_md.exists()
+    skill_md = SKILLS_DIR / skill_name / "SKILL.md"
+    return skill_md.exists()
 
 
 def validate_eval_spec(spec: dict) -> list[str]:
     """Validate an eval spec and return any errors."""
     errors = []
-    if "skill" not in spec:
-        errors.append("Missing 'skill' field")
-    if "scenarios" not in spec:
-        errors.append("Missing 'scenarios' field")
-    elif not isinstance(spec["scenarios"], list):
-        errors.append("'scenarios' must be a list")
+    if "skill_name" not in spec:
+        errors.append("Missing 'skill_name' field")
+    if "evals" not in spec:
+        errors.append("Missing 'evals' field")
+    elif not isinstance(spec["evals"], list):
+        errors.append("'evals' must be a list")
     else:
-        for i, scenario in enumerate(spec["scenarios"]):
-            if "name" not in scenario:
-                errors.append(f"Scenario {i}: missing 'name'")
-            if "prompt" not in scenario:
-                errors.append(f"Scenario {i}: missing 'prompt'")
-            if "expected" not in scenario:
-                errors.append(f"Scenario {i}: missing 'expected'")
+        for i, ev in enumerate(spec["evals"]):
+            if "id" not in ev:
+                errors.append(f"Eval {i}: missing 'id'")
+            if "prompt" not in ev:
+                errors.append(f"Eval {i}: missing 'prompt'")
+            if "expected_output" not in ev:
+                errors.append(f"Eval {i}: missing 'expected_output'")
     return errors
+
+
+def get_next_iteration(workspace_dir: Path) -> int:
+    """Get the next iteration number for a workspace."""
+    if not workspace_dir.exists():
+        return 1
+    existing = [
+        int(d.name.split("-")[1])
+        for d in workspace_dir.iterdir()
+        if d.is_dir() and d.name.startswith("iteration-")
+    ]
+    return max(existing, default=0) + 1
+
+
+def create_workspace_structure(skill_name: str, spec: dict) -> Path:
+    """Create workspace directory structure for an eval iteration."""
+    workspace_dir = PROJECT_DIR / f"{skill_name}-workspace"
+    iteration = get_next_iteration(workspace_dir)
+    iteration_dir = workspace_dir / f"iteration-{iteration}"
+
+    for ev in spec["evals"]:
+        eval_name = f"eval-{ev['id']}"
+        for variant in ["with_skill", "without_skill"]:
+            outputs_dir = iteration_dir / eval_name / variant / "outputs"
+            outputs_dir.mkdir(parents=True, exist_ok=True)
+
+    return iteration_dir
 
 
 def run_eval(skill_name: str, spec: dict) -> dict:
     """Run evaluations for a skill. Returns results dict."""
+    skill_exists = check_skill_exists(skill_name)
+    iteration_dir = create_workspace_structure(skill_name, spec)
+
     results = {
-        "skill": skill_name,
-        "skill_exists": check_skill_exists(skill_name),
-        "scenarios": [],
+        "skill_name": skill_name,
+        "skill_exists": skill_exists,
+        "iteration_dir": str(iteration_dir),
+        "evals": [],
     }
 
-    if not results["skill_exists"]:
+    if not skill_exists:
         print(f"  Skill '{skill_name}' not yet implemented (TDD: this is expected)")
-        for scenario in spec.get("scenarios", []):
-            results["scenarios"].append({
-                "name": scenario["name"],
+        for ev in spec["evals"]:
+            eval_name = f"eval-{ev['id']}"
+            eval_dir = iteration_dir / eval_name / "with_skill"
+
+            # Write timing (zero — not run)
+            timing = {"total_tokens": 0, "duration_ms": 0}
+            with open(eval_dir / "timing.json", "w") as f:
+                json.dump(timing, f, indent=2)
+
+            # Write grading (all skipped)
+            grading = {
+                "assertion_results": [
+                    {
+                        "text": assertion,
+                        "passed": False,
+                        "evidence": "Skill not yet implemented",
+                    }
+                    for assertion in ev.get("assertions", [])
+                ],
+                "summary": {
+                    "passed": 0,
+                    "failed": len(ev.get("assertions", [])),
+                    "total": len(ev.get("assertions", [])),
+                    "pass_rate": 0.0,
+                },
+            }
+            with open(eval_dir / "grading.json", "w") as f:
+                json.dump(grading, f, indent=2)
+
+            results["evals"].append({
+                "id": ev["id"],
                 "status": "skipped",
                 "reason": "skill not implemented",
             })
+
+        # Write benchmark
+        benchmark = {
+            "run_summary": {
+                "with_skill": {
+                    "pass_rate": {"mean": 0.0},
+                    "time_seconds": {"mean": 0.0},
+                    "tokens": {"mean": 0},
+                },
+                "without_skill": {
+                    "pass_rate": {"mean": 0.0},
+                    "time_seconds": {"mean": 0.0},
+                    "tokens": {"mean": 0},
+                },
+                "delta": {
+                    "pass_rate": 0.0,
+                    "time_seconds": 0.0,
+                    "tokens": 0,
+                },
+            }
+        }
+        with open(iteration_dir / "benchmark.json", "w") as f:
+            json.dump(benchmark, f, indent=2)
+
+        # Write empty feedback
+        feedback = {f"eval-{ev['id']}": "" for ev in spec["evals"]}
+        with open(iteration_dir / "feedback.json", "w") as f:
+            json.dump(feedback, f, indent=2)
+
         return results
 
-    # When skill exists, run each scenario
-    for scenario in spec.get("scenarios", []):
-        print(f"  Running: {scenario['name']}...")
+    # When skill exists, run each eval
+    for ev in spec["evals"]:
+        eval_name = f"eval-{ev['id']}"
+        print(f"  Running eval {ev['id']}: {ev.get('expected_output', '')[:60]}...")
+
         # TODO: Integrate with Claude API or agent framework to actually
         # execute the prompt against the skill and check expected outcomes.
-        # For now, mark as pending manual review.
-        results["scenarios"].append({
-            "name": scenario["name"],
+        # For now, create placeholder result files for manual review.
+        for variant in ["with_skill", "without_skill"]:
+            eval_dir = iteration_dir / eval_name / variant
+
+            timing = {"total_tokens": 0, "duration_ms": 0}
+            with open(eval_dir / "timing.json", "w") as f:
+                json.dump(timing, f, indent=2)
+
+            grading = {
+                "assertion_results": [
+                    {
+                        "text": assertion,
+                        "passed": None,
+                        "evidence": "Pending manual review",
+                    }
+                    for assertion in ev.get("assertions", [])
+                ],
+                "summary": {
+                    "passed": 0,
+                    "failed": 0,
+                    "total": len(ev.get("assertions", [])),
+                    "pass_rate": None,
+                },
+            }
+            with open(eval_dir / "grading.json", "w") as f:
+                json.dump(grading, f, indent=2)
+
+        results["evals"].append({
+            "id": ev["id"],
             "status": "pending_review",
-            "prompt": scenario["prompt"],
-            "expected": scenario["expected"],
         })
+
+    # Write benchmark placeholder
+    benchmark = {
+        "run_summary": {
+            "with_skill": {
+                "pass_rate": {"mean": None},
+                "time_seconds": {"mean": None},
+                "tokens": {"mean": None},
+            },
+            "without_skill": {
+                "pass_rate": {"mean": None},
+                "time_seconds": {"mean": None},
+                "tokens": {"mean": None},
+            },
+            "delta": {
+                "pass_rate": None,
+                "time_seconds": None,
+                "tokens": None,
+            },
+        }
+    }
+    with open(iteration_dir / "benchmark.json", "w") as f:
+        json.dump(benchmark, f, indent=2)
+
+    feedback = {f"eval-{ev['id']}": "" for ev in spec["evals"]}
+    with open(iteration_dir / "feedback.json", "w") as f:
+        json.dump(feedback, f, indent=2)
 
     return results
 
@@ -96,17 +240,17 @@ def list_evals():
     """List all available eval specs."""
     eval_dirs = sorted(
         d for d in EVALS_DIR.iterdir()
-        if d.is_dir() and (d / "eval.yaml").exists()
+        if d.is_dir() and (d / "evals.json").exists()
     )
     if not eval_dirs:
-        print("No eval specs found. Create one in evals/<skill-name>/eval.yaml")
+        print("No eval specs found. Create one in evals/<skill-name>/evals.json")
         return
     print("Available evals:")
     for d in eval_dirs:
         spec = load_eval_spec(d.name)
         implemented = "implemented" if check_skill_exists(d.name) else "not implemented"
-        scenarios = len(spec.get("scenarios", []))
-        print(f"  {d.name}: {scenarios} scenarios ({implemented})")
+        num_evals = len(spec.get("evals", []))
+        print(f"  {d.name}: {num_evals} evals ({implemented})")
 
 
 def main():
@@ -114,7 +258,6 @@ def main():
     parser.add_argument("skill", nargs="?", help="Skill name to evaluate")
     parser.add_argument("--all", action="store_true", help="Run all evals")
     parser.add_argument("--list", action="store_true", help="List available evals")
-    parser.add_argument("--tags", nargs="+", help="Filter scenarios by tags")
     args = parser.parse_args()
 
     if args.list:
@@ -124,7 +267,7 @@ def main():
     if args.all:
         eval_dirs = sorted(
             d.name for d in EVALS_DIR.iterdir()
-            if d.is_dir() and (d / "eval.yaml").exists()
+            if d.is_dir() and (d / "evals.json").exists()
         )
         if not eval_dirs:
             print("No eval specs found.")
@@ -132,7 +275,8 @@ def main():
         for skill_name in eval_dirs:
             print(f"\n=== {skill_name} ===")
             spec = load_eval_spec(skill_name)
-            run_eval(skill_name, spec)
+            results = run_eval(skill_name, spec)
+            print_results(results)
         return
 
     if not args.skill:
@@ -141,7 +285,6 @@ def main():
 
     spec = load_eval_spec(args.skill)
 
-    # Validate the spec
     errors = validate_eval_spec(spec)
     if errors:
         print(f"Invalid eval spec for '{args.skill}':")
@@ -150,21 +293,19 @@ def main():
         sys.exit(1)
 
     print(f"=== Evaluating: {args.skill} ===")
-    scenarios = spec.get("scenarios", [])
-
-    # Filter by tags if specified
-    if args.tags:
-        tag_set = set(args.tags)
-        scenarios = [s for s in scenarios if tag_set & set(s.get("tags", []))]
-        spec["scenarios"] = scenarios
-
-    print(f"Scenarios: {len(scenarios)}")
+    print(f"Evals: {len(spec['evals'])}")
     results = run_eval(args.skill, spec)
+    print_results(results)
 
-    # Summary
+
+def print_results(results: dict):
+    """Print eval results summary."""
     print(f"\n--- Results ---")
-    for s in results["scenarios"]:
-        print(f"  [{s['status']}] {s['name']}")
+    print(f"Workspace: {results['iteration_dir']}")
+    for ev in results["evals"]:
+        print(f"  [eval-{ev['id']}] {ev['status']}")
+        if "reason" in ev:
+            print(f"    reason: {ev['reason']}")
 
 
 if __name__ == "__main__":
