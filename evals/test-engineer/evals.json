@@ -32,6 +32,28 @@
         "The output recognizes that a free-text field is not suitable for BVA",
         "The output asks for clarification or suggests alternative testing techniques"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "The score field must be at least 0. Generate BVA test cases.",
+      "expected_output": "The skill detects only a lower limit (minimum 0) with no upper limit, asks the user to confirm or provide the upper limit before generating test cases.",
+      "files": [],
+      "assertions": [
+        "The output detects that only a lower limit (0) is provided",
+        "The output asks the user to confirm or provide the missing upper limit",
+        "The output does not generate a full BVA table without user confirmation"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The discount percentage cannot exceed 50%. Create BVA test cases for this field.",
+      "expected_output": "The skill detects only an upper limit (maximum 50) with no lower limit, asks the user to confirm or provide the lower limit before generating test cases.",
+      "files": [],
+      "assertions": [
+        "The output detects that only an upper limit (50) is provided",
+        "The output asks the user to confirm or provide the missing lower limit",
+        "The output does not generate a full BVA table without user confirmation"
+      ]
     }
   ]
 }

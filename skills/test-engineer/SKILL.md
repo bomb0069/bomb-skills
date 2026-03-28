@@ -39,6 +39,17 @@ If the minimum value is greater than the maximum value, flag this as a likely er
 
 If there are multiple input fields, analyze each field separately and organize the output by field.
 
+#### Single-Bound Requirements
+
+If the requirement specifies **only a lower limit** (e.g., "must be at least 0") or **only an upper limit** (e.g., "cannot exceed 50"), do NOT generate the full BVA table immediately. Instead:
+
+1. Tell the user which bound you found (lower or upper) and its value.
+2. Ask the user to confirm or provide the missing bound. For example:
+   - "I found a lower limit of 0, but no upper limit. What is the maximum allowed value for this field?"
+   - "I found an upper limit of 50%, but no lower limit. What is the minimum allowed value? (e.g., 0?)"
+3. Wait for the user's response before generating test cases.
+4. Once both bounds are confirmed, proceed to Step 2 as normal.
+
 ### Step 2: Apply BVA Technique
 
 For each identified boundary (min, max), generate these **6 core boundary values**:
@@ -95,3 +106,19 @@ Rules for output:
 | TC-04 | 59 | Valid | Just below maximum |
 | TC-05 | 60 | Valid | Maximum boundary |
 | TC-06 | 61 | Invalid | Just above maximum |
+
+## Example: Single-Bound Requirement
+
+**User prompt**: "The score field must be at least 0. Generate BVA test cases."
+
+**Output**:
+
+**Input Analysis**
+- Field: Score
+- Type: Numeric
+- Lower limit: 0
+- Upper limit: **not specified**
+
+I found a lower limit of **0**, but no upper limit was provided. To generate complete BVA test cases, I need both boundaries.
+
+**Could you confirm the maximum allowed value for the score field?** For example, is it 100, 999, or something else?

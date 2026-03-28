@@ -2,22 +2,27 @@
 """
 Eval runner for bomb-skills.
 
+Uses Claude Code CLI (claude -p) as subagent to execute evals.
+Each eval runs twice: with_skill (SKILL.md loaded) and without_skill (baseline).
+A separate grading call evaluates assertions against actual output.
+
 Follows the agentskills.io eval format:
 - Evals defined in evals/<skill-name>/evals.json
 - Results stored in <skill-name>-workspace/iteration-N/
 - Outputs: grading.json, timing.json, benchmark.json, feedback.json
 
 Usage:
-    python evals/run_evals.py <skill-name>       # Run evals for one skill
-    python evals/run_evals.py --all               # Run all evals
-    python evals/run_evals.py --list              # List available evals
+    python3 evals/run_evals.py <skill-name>       # Run evals for one skill
+    python3 evals/run_evals.py --all               # Run all evals
+    python3 evals/run_evals.py --list              # List available evals
 """
+
+from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
-import time
-from datetime import datetime
 from pathlib import Path
 
 EVALS_DIR = Path(__file__).parent
@@ -88,8 +93,191 @@ def create_workspace_structure(skill_name: str, spec: dict) -> Path:
     return iteration_dir
 
 
+def run_claude(prompt: str, system_prompt: str | None = None) -> dict:
+    """Run a prompt through Claude Code CLI and return parsed JSON result."""
+    cmd = [
+        "claude", "-p", prompt,
+        "--output-format", "json",
+        "--no-session-persistence",
+        "--model", "sonnet",
+    ]
+    if system_prompt:
+        cmd.extend(["--system-prompt", system_prompt])
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            return {"error": result.stderr.strip(), "result": "", "duration_ms": 0, "usage": {}}
+        return json.loads(result.stdout)
+    except subprocess.TimeoutExpired:
+        return {"error": "Timeout after 120s", "result": "", "duration_ms": 120000, "usage": {}}
+    except json.JSONDecodeError:
+        return {"error": "Failed to parse Claude output", "result": result.stdout, "duration_ms": 0, "usage": {}}
+
+
+def extract_timing(claude_result: dict) -> dict:
+    """Extract timing data from Claude CLI JSON result."""
+    usage = claude_result.get("usage", {})
+    input_tokens = usage.get("input_tokens", 0)
+    output_tokens = usage.get("output_tokens", 0)
+    cache_read = usage.get("cache_read_input_tokens", 0)
+    cache_creation = usage.get("cache_creation_input_tokens", 0)
+    return {
+        "total_tokens": input_tokens + output_tokens + cache_read + cache_creation,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read_input_tokens": cache_read,
+        "cache_creation_input_tokens": cache_creation,
+        "duration_ms": claude_result.get("duration_ms", 0),
+        "cost_usd": claude_result.get("total_cost_usd", 0),
+    }
+
+
+def grade_assertions(output: str, assertions: list[str]) -> dict:
+    """Use Claude to grade assertions against actual output."""
+    if not assertions:
+        return {
+            "assertion_results": [],
+            "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0},
+        }
+
+    assertions_text = "\n".join(f"{i+1}. {a}" for i, a in enumerate(assertions))
+    grading_prompt = f"""Grade each assertion against the actual output below.
+For each assertion, respond with PASS or FAIL and brief evidence.
+
+ACTUAL OUTPUT:
+---
+{output}
+---
+
+ASSERTIONS:
+{assertions_text}
+
+Respond in this exact JSON format (no markdown, no code fences):
+{{
+  "assertion_results": [
+    {{"text": "assertion text", "passed": true/false, "evidence": "brief quote or reason"}}
+  ]
+}}"""
+
+    result = run_claude(
+        grading_prompt,
+        system_prompt="You are an eval grader. Output only valid JSON, no markdown fences.",
+    )
+
+    response_text = result.get("result", "")
+
+    # Try to parse grading response as JSON
+    try:
+        # Strip potential markdown fences
+        cleaned = response_text.strip()
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[1:])
+        if cleaned.endswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[:-1])
+        grading = json.loads(cleaned.strip())
+    except (json.JSONDecodeError, ValueError):
+        # Fallback: mark all as needing manual review
+        grading = {
+            "assertion_results": [
+                {"text": a, "passed": None, "evidence": f"Grading parse failed. Raw: {response_text[:200]}"}
+                for a in assertions
+            ]
+        }
+
+    # Compute summary
+    results_list = grading.get("assertion_results", [])
+    passed = sum(1 for r in results_list if r.get("passed") is True)
+    failed = sum(1 for r in results_list if r.get("passed") is False)
+    total = len(results_list)
+    grading["summary"] = {
+        "passed": passed,
+        "failed": failed,
+        "total": total,
+        "pass_rate": round(passed / total, 2) if total > 0 else 0.0,
+    }
+
+    return grading
+
+
+def run_single_eval(ev: dict, skill_name: str, iteration_dir: Path) -> dict:
+    """Run a single eval (with_skill and without_skill) and write results."""
+    eval_name = f"eval-{ev['id']}"
+    prompt = ev["prompt"]
+    assertions = ev.get("assertions", [])
+    skill_md_path = SKILLS_DIR / skill_name / "SKILL.md"
+
+    eval_result = {"id": ev["id"], "variants": {}}
+
+    for variant in ["with_skill", "without_skill"]:
+        eval_dir = iteration_dir / eval_name / variant
+        print(f"    [{variant}] Running...")
+
+        # Build system prompt
+        if variant == "with_skill":
+            skill_content = skill_md_path.read_text()
+            system_prompt = f"Follow the instructions in this skill:\n\n{skill_content}"
+        else:
+            system_prompt = None
+
+        # Execute prompt via Claude CLI
+        claude_result = run_claude(prompt, system_prompt)
+
+        # Save raw output
+        output_text = claude_result.get("result", "")
+        with open(eval_dir / "outputs" / "response.txt", "w") as f:
+            f.write(output_text)
+
+        # Write timing
+        timing = extract_timing(claude_result)
+        with open(eval_dir / "timing.json", "w") as f:
+            json.dump(timing, f, indent=2)
+
+        # Grade assertions
+        if output_text and assertions:
+            print(f"    [{variant}] Grading {len(assertions)} assertions...")
+            grading = grade_assertions(output_text, assertions)
+        elif not output_text:
+            error = claude_result.get("error", "No output")
+            grading = {
+                "assertion_results": [
+                    {"text": a, "passed": False, "evidence": f"No output: {error}"}
+                    for a in assertions
+                ],
+                "summary": {
+                    "passed": 0,
+                    "failed": len(assertions),
+                    "total": len(assertions),
+                    "pass_rate": 0.0,
+                },
+            }
+        else:
+            grading = {
+                "assertion_results": [],
+                "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0},
+            }
+
+        with open(eval_dir / "grading.json", "w") as f:
+            json.dump(grading, f, indent=2)
+
+        summary = grading.get("summary", {})
+        print(f"    [{variant}] Pass rate: {summary.get('pass_rate', 'N/A')}")
+
+        eval_result["variants"][variant] = {
+            "pass_rate": summary.get("pass_rate"),
+            "timing": timing,
+        }
+
+    return eval_result
+
+
 def run_eval(skill_name: str, spec: dict) -> dict:
-    """Run evaluations for a skill. Returns results dict."""
+    """Run all evaluations for a skill."""
     skill_exists = check_skill_exists(skill_name)
     iteration_dir = create_workspace_structure(skill_name, spec)
 
@@ -106,20 +294,14 @@ def run_eval(skill_name: str, spec: dict) -> dict:
             eval_name = f"eval-{ev['id']}"
             eval_dir = iteration_dir / eval_name / "with_skill"
 
-            # Write timing (zero — not run)
             timing = {"total_tokens": 0, "duration_ms": 0}
             with open(eval_dir / "timing.json", "w") as f:
                 json.dump(timing, f, indent=2)
 
-            # Write grading (all skipped)
             grading = {
                 "assertion_results": [
-                    {
-                        "text": assertion,
-                        "passed": False,
-                        "evidence": "Skill not yet implemented",
-                    }
-                    for assertion in ev.get("assertions", [])
+                    {"text": a, "passed": False, "evidence": "Skill not yet implemented"}
+                    for a in ev.get("assertions", [])
                 ],
                 "summary": {
                     "passed": 0,
@@ -137,103 +319,76 @@ def run_eval(skill_name: str, spec: dict) -> dict:
                 "reason": "skill not implemented",
             })
 
-        # Write benchmark
-        benchmark = {
-            "run_summary": {
-                "with_skill": {
-                    "pass_rate": {"mean": 0.0},
-                    "time_seconds": {"mean": 0.0},
-                    "tokens": {"mean": 0},
-                },
-                "without_skill": {
-                    "pass_rate": {"mean": 0.0},
-                    "time_seconds": {"mean": 0.0},
-                    "tokens": {"mean": 0},
-                },
-                "delta": {
-                    "pass_rate": 0.0,
-                    "time_seconds": 0.0,
-                    "tokens": 0,
-                },
-            }
-        }
-        with open(iteration_dir / "benchmark.json", "w") as f:
-            json.dump(benchmark, f, indent=2)
-
-        # Write empty feedback
-        feedback = {f"eval-{ev['id']}": "" for ev in spec["evals"]}
-        with open(iteration_dir / "feedback.json", "w") as f:
-            json.dump(feedback, f, indent=2)
-
+        write_benchmark(iteration_dir, results["evals"], spec)
         return results
 
-    # When skill exists, run each eval
+    # Run each eval via Claude CLI
+    all_eval_results = []
     for ev in spec["evals"]:
-        eval_name = f"eval-{ev['id']}"
-        print(f"  Running eval {ev['id']}: {ev.get('expected_output', '')[:60]}...")
+        print(f"  Eval {ev['id']}: {ev.get('expected_output', '')[:60]}...")
+        eval_result = run_single_eval(ev, skill_name, iteration_dir)
+        all_eval_results.append(eval_result)
 
-        # TODO: Integrate with Claude API or agent framework to actually
-        # execute the prompt against the skill and check expected outcomes.
-        # For now, create placeholder result files for manual review.
-        for variant in ["with_skill", "without_skill"]:
-            eval_dir = iteration_dir / eval_name / variant
-
-            timing = {"total_tokens": 0, "duration_ms": 0}
-            with open(eval_dir / "timing.json", "w") as f:
-                json.dump(timing, f, indent=2)
-
-            grading = {
-                "assertion_results": [
-                    {
-                        "text": assertion,
-                        "passed": None,
-                        "evidence": "Pending manual review",
-                    }
-                    for assertion in ev.get("assertions", [])
-                ],
-                "summary": {
-                    "passed": 0,
-                    "failed": 0,
-                    "total": len(ev.get("assertions", [])),
-                    "pass_rate": None,
-                },
-            }
-            with open(eval_dir / "grading.json", "w") as f:
-                json.dump(grading, f, indent=2)
+        with_pr = eval_result["variants"].get("with_skill", {}).get("pass_rate")
+        without_pr = eval_result["variants"].get("without_skill", {}).get("pass_rate")
+        status = "passed" if with_pr == 1.0 else "partial" if (with_pr or 0) > 0 else "failed"
 
         results["evals"].append({
             "id": ev["id"],
-            "status": "pending_review",
+            "status": status,
+            "with_skill_pass_rate": with_pr,
+            "without_skill_pass_rate": without_pr,
         })
 
-    # Write benchmark placeholder
-    benchmark = {
-        "run_summary": {
-            "with_skill": {
-                "pass_rate": {"mean": None},
-                "time_seconds": {"mean": None},
-                "tokens": {"mean": None},
-            },
-            "without_skill": {
-                "pass_rate": {"mean": None},
-                "time_seconds": {"mean": None},
-                "tokens": {"mean": None},
-            },
-            "delta": {
-                "pass_rate": None,
-                "time_seconds": None,
-                "tokens": None,
-            },
+    write_benchmark(iteration_dir, results["evals"], spec, all_eval_results)
+    return results
+
+
+def write_benchmark(iteration_dir: Path, eval_results: list, spec: dict, detailed_results: list | None = None):
+    """Write benchmark.json and feedback.json."""
+    if detailed_results:
+        with_rates = [r["variants"]["with_skill"]["pass_rate"] or 0 for r in detailed_results]
+        without_rates = [r["variants"]["without_skill"]["pass_rate"] or 0 for r in detailed_results]
+        with_times = [r["variants"]["with_skill"]["timing"]["duration_ms"] / 1000 for r in detailed_results]
+        without_times = [r["variants"]["without_skill"]["timing"]["duration_ms"] / 1000 for r in detailed_results]
+        with_tokens = [r["variants"]["with_skill"]["timing"]["total_tokens"] for r in detailed_results]
+        without_tokens = [r["variants"]["without_skill"]["timing"]["total_tokens"] for r in detailed_results]
+
+        n = len(detailed_results)
+        benchmark = {
+            "run_summary": {
+                "with_skill": {
+                    "pass_rate": {"mean": round(sum(with_rates) / n, 2)},
+                    "time_seconds": {"mean": round(sum(with_times) / n, 1)},
+                    "tokens": {"mean": round(sum(with_tokens) / n)},
+                },
+                "without_skill": {
+                    "pass_rate": {"mean": round(sum(without_rates) / n, 2)},
+                    "time_seconds": {"mean": round(sum(without_times) / n, 1)},
+                    "tokens": {"mean": round(sum(without_tokens) / n)},
+                },
+                "delta": {
+                    "pass_rate": round(sum(with_rates) / n - sum(without_rates) / n, 2),
+                    "time_seconds": round(sum(with_times) / n - sum(without_times) / n, 1),
+                    "tokens": round(sum(with_tokens) / n - sum(without_tokens) / n),
+                },
+            }
         }
-    }
+    else:
+        benchmark = {
+            "run_summary": {
+                "with_skill": {"pass_rate": {"mean": 0.0}, "time_seconds": {"mean": 0.0}, "tokens": {"mean": 0}},
+                "without_skill": {"pass_rate": {"mean": 0.0}, "time_seconds": {"mean": 0.0}, "tokens": {"mean": 0}},
+                "delta": {"pass_rate": 0.0, "time_seconds": 0.0, "tokens": 0},
+            }
+        }
+
     with open(iteration_dir / "benchmark.json", "w") as f:
         json.dump(benchmark, f, indent=2)
 
     feedback = {f"eval-{ev['id']}": "" for ev in spec["evals"]}
     with open(iteration_dir / "feedback.json", "w") as f:
         json.dump(feedback, f, indent=2)
-
-    return results
 
 
 def list_evals():
@@ -251,6 +406,19 @@ def list_evals():
         implemented = "implemented" if check_skill_exists(d.name) else "not implemented"
         num_evals = len(spec.get("evals", []))
         print(f"  {d.name}: {num_evals} evals ({implemented})")
+
+
+def print_results(results: dict):
+    """Print eval results summary."""
+    print(f"\n--- Results ---")
+    print(f"Workspace: {results['iteration_dir']}")
+    for ev in results["evals"]:
+        status_str = f"[eval-{ev['id']}] {ev['status']}"
+        if "with_skill_pass_rate" in ev:
+            status_str += f"  (with_skill: {ev['with_skill_pass_rate']}, without: {ev['without_skill_pass_rate']})"
+        if "reason" in ev:
+            status_str += f"  ({ev['reason']})"
+        print(f"  {status_str}")
 
 
 def main():
@@ -296,16 +464,6 @@ def main():
     print(f"Evals: {len(spec['evals'])}")
     results = run_eval(args.skill, spec)
     print_results(results)
-
-
-def print_results(results: dict):
-    """Print eval results summary."""
-    print(f"\n--- Results ---")
-    print(f"Workspace: {results['iteration_dir']}")
-    for ev in results["evals"]:
-        print(f"  [eval-{ev['id']}] {ev['status']}")
-        if "reason" in ev:
-            print(f"    reason: {ev['reason']}")
 
 
 if __name__ == "__main__":
