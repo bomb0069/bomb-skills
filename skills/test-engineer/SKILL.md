@@ -109,37 +109,31 @@ Where "1 step" depends on precision:
 
 Do not use emojis anywhere in your output — not in headers, section labels, or closing lines. Use plain text and markdown formatting only (e.g., "1." or "**1. Missing Lower Limit**" instead of "1️⃣").
 
-Present the test cases in a **markdown table** with these 5 columns:
+Present the test cases in a **markdown table**. Column naming rules:
 
-| ID | Name | Description | Input | Expected Output |
+**Input columns** must use the `Input:` prefix followed by the field name. This convention enables grouping when exported to spreadsheets.
+
+For a **single direct input** field:
+
+| ID | Name | Description | Input: {FieldName} | Expected Output |
 |---|---|---|---|---|
 | TC-01 | {short name} | {business description} | {value} | {result} |
+
+For **calculated fields** with direct and indirect inputs, split into multiple `Input:` columns and add a `Calculated:` column:
+
+| ID | Name | Description | Input: {DirectField} (direct) | Input: {IndirectField} (indirect) | Calculated: {ResultField} | Expected Output |
+|---|---|---|---|---|---|---|
+
+- **(direct)** = what the user actually enters (e.g., birthdate)
+- **(indirect)** = the reference value used in the calculation (e.g., transaction date / current date)
+- **Calculated:** = the computed value that the condition checks against
 
 Column definitions:
 - **ID**: Sequential test case ID (TC-01, TC-02, ...)
 - **Name**: Short name describing what this test case covers (e.g., "Below minimum age", "Maximum boundary")
-- **Description**: Business-understandable explanation of what is being tested and what should happen, in **1–2 sentences**. Write it so a non-technical person can understand the purpose. Example: "Enter age 17, which is one below the minimum allowed age of 18. The system should reject this input."
-- **Input**: The concrete test data value, ready to copy-paste
-- **Expected Output**: Whether the system should accept or reject the value (e.g., "Invalid - rejected", "Valid - accepted")
-
-#### Calculated Fields (Direct vs Indirect Input)
-
-When a condition is based on a **calculated value** (e.g., age calculated from birthdate), the test case table must split the Input column to show all inputs involved:
-
-- **Direct input**: What the user actually enters (e.g., birthdate)
-- **Indirect input**: The reference value used in the calculation (e.g., transaction date / current date)
-
-Use this extended table format:
-
-| ID | Name | Description | Direct Input (Birthdate) | Indirect Input (Transaction Date) | Calculated Value | Expected Output |
-|---|---|---|---|---|---|---|
-
-This makes it clear:
-- Which values the tester needs to set up
-- How the boundary age is achieved through the combination of dates
-- That the transaction/current date is a test variable too (not just "today")
-
-Apply this format whenever the boundary condition depends on a calculation between two or more input values, not just a single field.
+- **Description**: Business-understandable explanation in **1–2 sentences**. Example: "Enter age 17, one below the minimum of 18. The system should reject this."
+- **Input: {FieldName}**: Concrete test data value, ready to copy-paste. Always include the field name after `Input:`
+- **Expected Output**: Whether the system should accept or reject (e.g., "Invalid - rejected", "Valid - accepted")
 
 ## Example
 
@@ -154,14 +148,14 @@ Apply this format whenever the boundary condition depends on a calculation betwe
 
 **BVA Test Cases**
 
-| ID | Name | Description | Input | Expected Output |
+| ID | Name | Description | Input: Age | Expected Output |
 |---|---|---|---|---|
-| TC-01 | Below minimum age | Enter age 17, which is one below the minimum allowed age of 18. The system should reject this input. | 17 | Invalid - rejected |
-| TC-02 | Minimum age boundary | Enter age 18, which is the lowest allowed age. The system should accept this input. | 18 | Valid - accepted |
-| TC-03 | Above minimum age | Enter age 19, which is just above the minimum. The system should accept this input. | 19 | Valid - accepted |
-| TC-04 | Below maximum age | Enter age 59, which is just below the maximum allowed age of 60. The system should accept this input. | 59 | Valid - accepted |
-| TC-05 | Maximum age boundary | Enter age 60, which is the highest allowed age. The system should accept this input. | 60 | Valid - accepted |
-| TC-06 | Above maximum age | Enter age 61, which is one above the maximum allowed age of 60. The system should reject this input. | 61 | Invalid - rejected |
+| TC-01 | Below minimum age | Enter age 17, one below the minimum of 18. System should reject. | 17 | Invalid - rejected |
+| TC-02 | Minimum age boundary | Enter age 18, the lowest allowed. System should accept. | 18 | Valid - accepted |
+| TC-03 | Above minimum age | Enter age 19, just above minimum. System should accept. | 19 | Valid - accepted |
+| TC-04 | Below maximum age | Enter age 59, just below maximum of 60. System should accept. | 59 | Valid - accepted |
+| TC-05 | Maximum age boundary | Enter age 60, the highest allowed. System should accept. | 60 | Valid - accepted |
+| TC-06 | Above maximum age | Enter age 61, one above maximum of 60. System should reject. | 61 | Invalid - rejected |
 
 ## Example: Single-Bound Requirement
 
@@ -253,11 +247,11 @@ I need to clarify a few things before generating test cases.
 
 Assuming transaction date = **2026-03-28**:
 
-| ID | Name | Description | Direct Input (Birthdate) | Indirect Input (Transaction Date) | Calculated Age | Expected Output |
+| ID | Name | Description | Input: Birthdate (direct) | Input: Transaction Date (indirect) | Calculated: Age | Expected Output |
 |---|---|---|---|---|---|---|
-| TC-01 | Below minimum age | Born 1 day after the 18th birthday cutoff. Age is 17 years, 364 days — not yet 18. | 2008-03-29 | 2026-03-28 | 17y 364d | Invalid - rejected |
-| TC-02 | Minimum age boundary | Born exactly 18 years ago. Age is exactly 18. | 2008-03-28 | 2026-03-28 | 18y 0d | Valid - accepted |
-| TC-03 | Above minimum age | Born 1 day before the 18th birthday cutoff. Age is 18 years, 1 day. | 2008-03-27 | 2026-03-28 | 18y 1d | Valid - accepted |
-| TC-04 | Below maximum age | Born 1 day after the 65th birthday cutoff. Age is 64 years, 364 days. | 1961-03-29 | 2026-03-28 | 64y 364d | Valid - accepted |
-| TC-05 | Maximum age boundary | Born exactly 65 years ago. Age is exactly 65. | 1961-03-28 | 2026-03-28 | 65y 0d | Valid - accepted |
-| TC-06 | Above maximum age | Born 1 day before the 65th birthday cutoff. Age is 65 years, 1 day. | 1961-03-27 | 2026-03-28 | 65y 1d | Invalid - rejected |
+| TC-01 | Below minimum age | Born 1 day after cutoff. Not yet 18. | 2008-03-29 | 2026-03-28 | 17y 364d | Invalid - rejected |
+| TC-02 | Minimum age boundary | Born exactly 18 years ago. | 2008-03-28 | 2026-03-28 | 18y 0d | Valid - accepted |
+| TC-03 | Above minimum age | Born 1 day before cutoff. Just turned 18. | 2008-03-27 | 2026-03-28 | 18y 1d | Valid - accepted |
+| TC-04 | Below maximum age | Born 1 day after cutoff. Not yet 65. | 1961-03-29 | 2026-03-28 | 64y 364d | Valid - accepted |
+| TC-05 | Maximum age boundary | Born exactly 65 years ago. | 1961-03-28 | 2026-03-28 | 65y 0d | Valid - accepted |
+| TC-06 | Above maximum age | Born 1 day before cutoff. Over 65. | 1961-03-27 | 2026-03-28 | 65y 1d | Invalid - rejected |

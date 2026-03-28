@@ -4,11 +4,11 @@
     {
       "id": 1,
       "prompt": "I have a registration form with an age field. The user types their age as a whole number (integer). The valid age range is 18 to 60. Help me create test cases for this field.",
-      "expected_output": "A BVA test case table with columns ID, Name, Description, Input, Expected Output covering boundary values 17, 18, 19, 59, 60, 61 with business-friendly descriptions. No clarification needed since precision is explicitly stated as integer.",
+      "expected_output": "A BVA test case table with Input column labeled with field name (e.g. Input: Age) covering boundary values 17, 18, 19, 59, 60, 61.",
       "files": [],
       "assertions": [
         "The output includes boundary values 17, 18, 19, 59, 60, 61",
-        "The table has columns: ID, Name, Description, Input, Expected Output",
+        "The Input column header includes the field name (e.g. 'Input: Age' not just 'Input')",
         "Each row has a Description written in business-understandable language",
         "The output generates the table directly without asking for precision clarification"
       ]
@@ -16,13 +16,12 @@
     {
       "id": 2,
       "prompt": "Our booking system accepts appointments between 09:00 and 17:00. Help me create test cases for the time input.",
-      "expected_output": "BVA test cases for time range with columns ID, Name, Description, Input, Expected Output covering boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01.",
+      "expected_output": "BVA test cases with Input column labeled with field name (e.g. Input: Appointment Time) covering boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01.",
       "files": [],
       "assertions": [
         "The output includes time boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01",
-        "The table has columns: ID, Name, Description, Input, Expected Output",
+        "The Input column header includes the field name (e.g. 'Input: Appointment Time' or 'Input: Time')",
         "Each Description is written in business-understandable language",
-        "The Input column shows concrete time values",
         "The Expected Output column shows Valid or Invalid (or equivalent pass/fail)"
       ]
     },
@@ -60,11 +59,11 @@
     {
       "id": 6,
       "prompt": "Salary field accepts values from 15000 to 200000 (integer, Thai Baht). Generate BVA test cases with test data I can use immediately.",
-      "expected_output": "A table with columns ID, Name, Description, Input, Expected Output covering boundary values 14999, 15000, 15001, 199999, 200000, 200001 with business-friendly descriptions.",
+      "expected_output": "A table with Input column labeled with field name (e.g. Input: Salary) covering boundary values 14999, 15000, 15001, 199999, 200000, 200001.",
       "files": [],
       "assertions": [
         "The output includes boundary values 14999, 15000, 15001, 199999, 200000, 200001",
-        "The table has columns: ID, Name, Description, Input, Expected Output",
+        "The Input column header includes the field name (e.g. 'Input: Salary' not just 'Input')",
         "Each Name clearly states what the test case covers (e.g. below minimum salary, minimum salary boundary)",
         "Each Description explains in business language what is being tested and what should happen",
         "The Input column contains concrete numeric values ready to copy-paste",
@@ -108,10 +107,10 @@
     {
       "id": 10,
       "prompt": "Registration requires users to be not over 65 years old. The user enters their birthdate and the system calculates age. The valid range is 18 to 65. Generate BVA test cases.",
-      "expected_output": "A BVA test case table that splits the Input column into two: Birthdate (direct input from user) and Transaction Date (indirect input used to calculate age). Each row shows both dates needed to produce the boundary age value.",
+      "expected_output": "A BVA test case table with Input columns prefixed with 'Input:' and field name, e.g. 'Input: Birthdate (direct)' and 'Input: Transaction Date (indirect)', plus a 'Calculated: Age' column.",
       "files": [],
       "assertions": [
-        "The output table has separate columns or clearly labeled fields for Birthdate (direct input) and Transaction Date or current date (indirect input)",
+        "The Input columns include field names with 'Input:' prefix (e.g. 'Input: Birthdate' for direct input and 'Input: Transaction Date' for indirect input)",
         "The output explains that Birthdate is what the user enters (direct input) and Transaction Date is when the system checks age (indirect input)",
         "The boundary values are expressed as birthdates relative to a transaction date, not just age numbers",
         "The test cases cover BVA boundaries for both minimum age (18) and maximum age (65)"
