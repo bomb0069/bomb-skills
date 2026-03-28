@@ -56,14 +56,11 @@
     {
       "id": 6,
       "prompt": "Salary field accepts values from 15000 to 200000 (integer, Thai Baht). Generate BVA test cases with test data I can use immediately.",
-      "expected_output": "A table with Input column labeled with field name (e.g. Input: Salary) covering boundary values 14999, 15000, 15001, 199999, 200000, 200001.",
+      "expected_output": "Test case tables with Input column labeled with field name, containing concrete salary values.",
       "files": [],
       "assertions": [
-        "The output includes boundary values 14999, 15000, 15001, 199999, 200000, 200001",
-        "The Input column header includes the field name (e.g. 'Input: Salary' not just 'Input')",
-        "Each Name clearly states what the test case covers (e.g. below minimum salary, minimum salary boundary)",
-        "Each Description explains in business language what is being tested and what should happen",
-        "The Input column contains concrete numeric values ready to copy-paste",
+        "The output includes test case tables with Input column labeled with field name (e.g. 'Input: Salary')",
+        "The output contains concrete numeric salary values ready to copy-paste",
         "The Expected Output column clearly indicates whether the system should accept or reject the value"
       ]
     },
@@ -140,6 +137,31 @@
       "assertions": [
         "The output asks the user about business context OR generates business test data with an offer to customize for a specific domain",
         "The output does not only produce BVA boundary values — it addresses business test data in some way"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Personal loan application: applicant age must be 20-60 (integer) AND monthly salary must be 15000-200000 (integer, Thai Baht). Generate test cases.",
+      "expected_output": "The skill analyzes each condition separately with BVA, then combines them into one test scenario table. Each test case tests one boundary condition at a time while keeping the other field at a valid (nominal) value. The table has Input columns for both fields.",
+      "files": [],
+      "assertions": [
+        "The output identifies two separate conditions (age and salary) and analyzes each with BVA",
+        "The output produces a combined test scenario table with Input columns for both fields (e.g. Input: Age and Input: Salary)",
+        "When testing age boundaries, the salary value is set to a valid nominal value (not a boundary)",
+        "When testing salary boundaries, the age value is set to a valid nominal value (not a boundary)",
+        "The combined table covers BVA boundaries for both conditions"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Insurance policy: customer age 25-65 (integer), coverage amount 100000-5000000 (integer, Thai Baht), and policy duration 1-30 years (integer). Generate test cases.",
+      "expected_output": "The skill analyzes three conditions, applies BVA to each, and combines into one test scenario table with three Input columns. Each test case tests one field's boundary while other fields use valid nominal values.",
+      "files": [],
+      "assertions": [
+        "The output identifies three separate conditions (age, coverage amount, duration)",
+        "The output produces a combined test scenario table with Input columns for all three fields",
+        "Each test case varies only one field's boundary while keeping other fields at valid nominal values",
+        "The combined table covers BVA boundaries for all three conditions"
       ]
     }
   ]

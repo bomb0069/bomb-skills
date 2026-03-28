@@ -100,6 +100,30 @@ Where "1 step" depends on precision:
 - **Time (HH:MM)**: step = 1 minute
 - **Time (HH:MM:SS)**: step = 1 second
 
+#### Multiple Conditions (Combined Test Scenarios)
+
+When a requirement has **more than one condition** (e.g., age AND salary), do NOT generate separate tables per field. Instead:
+
+1. **Analyze each condition separately** with BVA to identify the 6 boundary values per field
+2. **Pick a nominal (valid middle) value** for each field — this is used when that field is NOT being boundary-tested
+3. **Combine into ONE test scenario table** with Input columns for ALL fields
+4. Each test case **varies only one field's boundary** while keeping all other fields at their nominal value
+
+This ensures each boundary is tested in isolation, which is the correct BVA approach for multi-condition requirements.
+
+Example structure for 2 conditions (age 20-60, salary 15000-200000):
+- Nominal age = 35 (middle of range)
+- Nominal salary = 100000 (middle of range)
+- When testing age=19 (below min), salary=100000 (nominal)
+- When testing salary=14999 (below min), age=35 (nominal)
+
+The combined table has columns for all fields:
+
+| ID | Name | Description | Input: Age | Input: Salary | Expected Output |
+|---|---|---|---|---|---|
+
+This produces 6 boundary test cases per condition × N conditions = 6N total test cases in one table, each varying exactly one boundary.
+
 ### Step 3: Generate Output
 
 Do not use emojis anywhere in your output — not in headers, section labels, or closing lines. Use plain text and markdown formatting only (e.g., "1." or "**1. Missing Lower Limit**" instead of "1️⃣").

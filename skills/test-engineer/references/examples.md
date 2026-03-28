@@ -131,3 +131,31 @@ Assuming transaction date = **2026-03-28**:
 | TC-04 | Below maximum age | Born 1 day after cutoff. Not yet 65. | 1961-03-29 | 2026-03-28 | 64y 364d | Valid - accepted |
 | TC-05 | Maximum age boundary | Born exactly 65 years ago. | 1961-03-28 | 2026-03-28 | 65y 0d | Valid - accepted |
 | TC-06 | Above maximum age | Born 1 day before cutoff. Over 65. | 1961-03-27 | 2026-03-28 | 65y 1d | Invalid - rejected |
+
+## Example: Multiple Conditions (Combined Test Scenarios)
+
+**User prompt**: "Personal loan: age 20-60 (integer) AND salary 15000-200000 (integer, Thai Baht). Generate test cases."
+
+**Output**:
+
+**Input Analysis**
+- Condition 1: Age — range 20 to 60, integer
+- Condition 2: Monthly Salary — range 15,000 to 200,000, integer (THB)
+- Nominal values: Age = 35, Salary = 100,000
+
+**Unit Test Cases (Combined BVA — one boundary at a time)**
+
+| ID | Name | Description | Input: Age | Input: Salary | Expected Output |
+|---|---|---|---|---|---|
+| TC-01 | Age below minimum | Age 19, below min. Salary at nominal. | 19 | 100,000 | Invalid - rejected |
+| TC-02 | Age at minimum | Age 20, minimum boundary. Salary at nominal. | 20 | 100,000 | Valid - accepted |
+| TC-03 | Age above minimum | Age 21, just above min. Salary at nominal. | 21 | 100,000 | Valid - accepted |
+| TC-04 | Age below maximum | Age 59, just below max. Salary at nominal. | 59 | 100,000 | Valid - accepted |
+| TC-05 | Age at maximum | Age 60, maximum boundary. Salary at nominal. | 60 | 100,000 | Valid - accepted |
+| TC-06 | Age above maximum | Age 61, above max. Salary at nominal. | 61 | 100,000 | Invalid - rejected |
+| TC-07 | Salary below minimum | Salary 14,999, below min. Age at nominal. | 35 | 14,999 | Invalid - rejected |
+| TC-08 | Salary at minimum | Salary 15,000, minimum boundary. Age at nominal. | 35 | 15,000 | Valid - accepted |
+| TC-09 | Salary above minimum | Salary 15,001, just above min. Age at nominal. | 35 | 15,001 | Valid - accepted |
+| TC-10 | Salary below maximum | Salary 199,999, just below max. Age at nominal. | 35 | 199,999 | Valid - accepted |
+| TC-11 | Salary at maximum | Salary 200,000, maximum boundary. Age at nominal. | 35 | 200,000 | Valid - accepted |
+| TC-12 | Salary above maximum | Salary 200,001, above max. Age at nominal. | 35 | 200,001 | Invalid - rejected |
