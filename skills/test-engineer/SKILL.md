@@ -190,18 +190,32 @@ Business test data = realistic values from the business domain — what real use
 
 ### Step 5: Combined Test Scenarios (Decision Table)
 
-After ALL conditions have their per-condition tables (Steps 2-4), generate a **final combined Test Scenarios table** at the end.
+After ALL conditions have their per-condition tables (Steps 2-4), combine business test data from all conditions into a **Test Scenarios table**.
 
-This table uses **decision table analysis** — it combines business test data from ALL conditions using **all combinations**. This is NOT the same as the per-condition tables; it creates end-to-end test scenarios that cover realistic multi-field combinations.
+**When there are 2+ conditions**, first ask the user which combination method to use. Use `AskUserQuestion` with header "Scenarios" and these options:
 
-Rules:
+1. **All combinations** — every value × every value across all conditions. Complete coverage but can be large. Example: A(5 values) × B(4 values) = 20 scenarios.
+2. **Pairwise** — each pair of values from any two conditions appears at least once. Much fewer rows while still covering important interactions. Example: A(5) × B(4) × C(3) → ~15-20 instead of 60.
+3. **Business-driven** — only include the most realistic/important combinations based on business context. Focuses on scenarios real users would actually encounter. Smallest set.
+
+After the user selects a method, generate the Test Scenarios table.
+
+**For single-condition requirements**, skip this step (no combinations needed).
+
+Rules for the Test Scenarios table:
 - ID prefix: `TS-01`, `TS-02` (for Test Scenario)
 - The table has `Input:` columns for ALL applicable conditions (BVA and EP)
-- Each row is a combination of business test data values from different conditions
-- Combine ALL business test data including **both valid and invalid values** — this means some scenarios pass (all inputs valid) and some fail (any input invalid)
-- All combinations: if condition A has 5 business values (3 valid + 2 invalid) and condition B has 4 values (2 valid + 2 invalid) → 20 scenarios with mixed pass/fail outcomes
-- Label: **"Test Scenarios (combined decision table — for acceptance/integration testing)"**
+- Combine ALL business test data including **both valid and invalid values** — some scenarios pass and some fail
+- Label: **"Test Scenarios ({method} — for acceptance/integration testing)"** where {method} is the chosen method
 - Description should explain the business meaning of the combination and why it passes or fails
+
+**Method-specific rules:**
+
+**All combinations:** Generate every possible combination. If A has N values and B has M values → N×M scenarios.
+
+**Pairwise:** Ensure every pair of values from any two conditions appears in at least one scenario. Use an algorithm or manual selection to minimize rows. For 3 conditions with values A(a1,a2,a3), B(b1,b2), C(c1,c2), cover all pairs: (a1,b1), (a1,b2), (a2,b1), etc. AND (a1,c1), (a1,c2), etc. AND (b1,c1), (b1,c2), etc.
+
+**Business-driven:** Select only the combinations that represent realistic end-to-end user journeys. Ask yourself: "Would a real user actually have this combination?" Skip unlikely/impossible combinations. Explain why each scenario is business-relevant in the Description.
 
 ### Step 6: Offer to Save Results
 
