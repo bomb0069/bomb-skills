@@ -93,18 +93,31 @@ For **each BVA-applicable condition** from Step 1, run the full BVA workflow:
 - Check bounds (single-bound? → ask user for missing bound)
 - If BVA not applicable (text, dropdown, etc.) → skip, use EP (Step 2b)
 
-**Before generating test cases**, show a **number line diagram** in a code block:
+**Before generating test cases**, show a **number line diagram** in a code block.
+
+When the field has **both min and max** boundaries, draw one diagram with all 6 points:
 
 ```
-{Field name}: {min} to {max} ({type})
+        Requirement: {field} must be between {min} and {max}
 
-    INVALID        VALID RANGE         INVALID
-  ◄─────────┼─────────────────────┼─────────►
-           {min}                 {max}
-    {min-1} ✗  {min} ✓  {min+1} ✓    {max-1} ✓  {max} ✓  {max+1} ✗
+  [✗ Invalid]  [✓ Valid]  [✓ Valid]           [✓ Valid]  [✓ Valid]  [✗ Invalid]
+       ↑            ↑          ↑                   ↑          ↑          ↑
+       |            |          |                   |          |          |
+  ◄─── {min-1} ──── {min} ──── {min+1} ── ··· ──── {max-1} ── {max} ──── {max+1} ───►
+     Below Min   Min (on)  Above Min           Below Max  Max (on)  Above Max
 ```
 
-This helps users visualize which values are boundary points and where the valid range lies.
+When the field has **only one boundary** (min-only or max-only), draw a single-side diagram:
+
+```
+        Requirement: {field} max {max} (unit = {step})
+
+                      [✓ Valid]       [✓ Valid]      [✗ Invalid]
+                           ↑               ↑              ↑
+                           |               |              |
+                ◄───── {max-1} ────── {max} ────── {max+1} ───►
+                        Below Max        Max (on)      Above Max
+```
 
 For each identified boundary (min, max), generate these **6 core boundary values**:
 
