@@ -54,11 +54,45 @@ If the requirement does **not** make the minimum unit (precision/step size) clea
 - **Percentage** — ambiguous unless format is stated. Could be integer (step=1) or decimal (step=0.01).
 - Any domain where the data type could reasonably be interpreted multiple ways.
 
-When asking:
-1. Identify that the precision is ambiguous.
-2. Show the user **concrete examples** of how different precision choices produce different boundary values.
-3. Ask them to confirm which precision matches their system.
-4. Wait for the user's response before generating test cases.
+When asking, use the **numbered choices format** (see below).
+
+#### How to Ask Clarification Questions
+
+Whenever you need to ask the user a question (missing bound, ambiguous precision, etc.), always present **numbered choices** with suggested answers. The last option must always be a custom/other option so the user can write their own answer.
+
+Format:
+```
+**[Question]**
+1. [Most likely option]
+2. [Second option]
+3. [Third option if applicable]
+N. Other — please specify: ___
+```
+
+This saves the user time — they can just reply with a number instead of typing a full answer.
+
+#### Multiple Independent Questions
+
+When there are **multiple fields** that each need clarification, do NOT ask questions one by one in sequence. Instead, present **all questions together in a single grouped block** so the user can answer them all at once.
+
+Format for multiple questions:
+```
+I need to clarify a few things before generating test cases:
+
+**Q1. [Field name] — [What needs clarifying]**
+1. [Option A]
+2. [Option B]
+3. Other — please specify: ___
+
+**Q2. [Field name] — [What needs clarifying]**
+1. [Option A]
+2. [Option B]
+3. Other — please specify: ___
+
+Please reply with your choices (e.g., "Q1: 1, Q2: 2").
+```
+
+This avoids a back-and-forth conversation for each question.
 
 Common ambiguous cases:
 - **Age**: Is the input a whole number of years (step = 1 year), or a birthdate where age is calculated in years-months-days? If birthdate, the boundary is not "64 years" but "64 years, 11 months, 29 days" — which means the actual input field is a date, not a number.
@@ -70,9 +104,7 @@ Common ambiguous cases:
 If the requirement specifies **only a lower limit** (e.g., "must be at least 0") or **only an upper limit** (e.g., "cannot exceed 50"), do NOT generate the full BVA table immediately. Instead:
 
 1. Tell the user which bound you found (lower or upper) and its value.
-2. Ask the user to confirm or provide the missing bound. For example:
-   - "I found a lower limit of 0, but no upper limit. What is the maximum allowed value for this field?"
-   - "I found an upper limit of 50%, but no lower limit. What is the minimum allowed value? (e.g., 0?)"
+2. Present numbered choices for the missing bound using the **numbered choices format**.
 3. Wait for the user's response before generating test cases.
 4. Once both bounds are confirmed, proceed to Step 2 as normal.
 
@@ -148,7 +180,11 @@ Column definitions:
 
 I found a lower limit of **0**, but no upper limit was provided. To generate complete BVA test cases, I need both boundaries.
 
-**Could you confirm the maximum allowed value for the score field?** For example, is it 100, 999, or something else?
+**What is the maximum allowed value for the score field?**
+1. 100
+2. 999
+3. 10,000
+4. Other — please specify: ___
 
 ## Example: Ambiguous Precision
 
@@ -169,8 +205,9 @@ Before I generate test cases, I need to clarify the **minimum unit of age data**
 | Birthdate (year-month-day) | 1 day | 64 years, 11 months, 29 days | Exactly 65 years | 65 years, 0 months, 1 day |
 
 **How does your system capture age?**
-- Does the user enter their age as a number (e.g., "64")? → I'll use integer step of 1 year.
-- Does the user enter a birthdate and the system calculates age? → I'll use date-based boundaries and the input field is actually a date.
+1. User enters age as a whole number (e.g., "64") — I'll use integer step of 1 year
+2. User enters a birthdate and the system calculates age — I'll use date-based boundaries
+3. Other — please specify: ___
 
 ## Example: Ambiguous Money Precision
 
@@ -191,4 +228,33 @@ Before I generate test cases, I need to clarify the **minimum unit of money** yo
 | 1 (whole baht) | 29,999 | 30,000 | 30,001 |
 | 100 (hundred baht) | 29,900 | 30,000 | 30,100 |
 
-**What is the smallest amount a user can deposit?** For example, can they deposit 0.01 baht (satang), or only whole baht, or only multiples of 100?
+**What is the smallest amount a user can deposit?**
+1. 0.01 baht (satang)
+2. 1 baht (whole baht)
+3. 100 baht (hundred-baht notes)
+4. Other — please specify: ___
+
+## Example: Multiple Independent Questions
+
+**User prompt**: "Registration form: user must be not over 65 years old, and the registration fee is not over 5,000 baht. Generate BVA test cases."
+
+**Output**:
+
+**Input Analysis**
+- Field 1: Age — constraint: not over 65, precision: **unclear**
+- Field 2: Registration fee — constraint: not over 5,000 baht, precision: **unclear**
+
+I need to clarify a few things before generating test cases:
+
+**Q1. Age — How does your system capture age?**
+1. User enters age as a whole number (e.g., "64") — integer step of 1 year
+2. User enters a birthdate and the system calculates age — date-based boundaries
+3. Other — please specify: ___
+
+**Q2. Registration fee — What is the smallest fee amount?**
+1. 0.01 baht (satang)
+2. 1 baht (whole baht)
+3. 100 baht
+4. Other — please specify: ___
+
+Please reply with your choices (e.g., "Q1: 1, Q2: 2").
