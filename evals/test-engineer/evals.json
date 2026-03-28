@@ -227,6 +227,16 @@
         "Valid file type scenarios DO vary file size (valid and invalid sizes)",
         "The total number of scenarios is significantly fewer than all-combinations would produce"
       ]
+    },
+    {
+      "id": 23,
+      "prompt": "Loan application: applicant age 20-60 (integer), monthly income 15000-200000 (integer, Thai Baht), credit score 300-850 (integer). Use sequential method. Generate test cases.",
+      "expected_output": "After user selects sequential method, the skill asks the user to choose the validation order with suggested sequences based on the business domain (e.g. Age → Income → Credit).",
+      "files": [],
+      "assertions": [
+        "The output presents choices for validation order with at least 2 suggested sequences",
+        "Each suggested order includes a business reason why that order makes sense"
+      ]
     }
   ]
 }

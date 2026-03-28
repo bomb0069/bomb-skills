@@ -224,7 +224,14 @@ Rules for the Test Scenarios table:
 - For valid values of condition 1 × valid values of condition 2 × invalid values of condition 3: generate scenarios (passes steps 1-2, fails at step 3)
 - ...and so on until all conditions pass (happy path)
 - Add a "Fails at" column to show which step rejected the scenario
-- Ask the user to confirm the validation order if not explicit in the requirement
+
+**After user selects sequential method**, ask them to confirm the validation order using `AskUserQuestion` with header "Order":
+- Suggest 2-3 possible orders based on the business domain. Put the recommended order first with "(Recommended)" label.
+- For each option, explain why that order makes business sense in the description.
+- Example options for file upload: "Type → Size (Recommended)" (check format before processing large files), "Size → Type" (reject oversized files early to save bandwidth)
+- Example options for loan: "Age → Income → Credit (Recommended)" (cheapest checks first), "Credit → Income → Age" (most disqualifying check first)
+
+After the user confirms the order, generate the Test Scenarios using that sequence.
 
 Example for file upload (check type first, then size):
 - JPG file, any size → rejected at step 1 (type check), no need to vary size
