@@ -77,7 +77,7 @@
       "expected_output": "The skill asks the user to clarify the minimum unit of age data — is it measured in whole years only (e.g. age 64 vs 65 vs 66), or in years-months-days via birthdate (e.g. 64y 11m 29d)? This determines whether the input field is age-as-integer or birthdate.",
       "files": [],
       "assertions": [
-        "The output presents choices for age precision (whole years vs birthdate) via AskUserQuestion tool or numbered text choices as fallback",
+        "The output presents options for age precision including whole years and birthdate for the user to choose from",
         "The output explains how different precision levels lead to different boundary values",
         "The output does not generate a final BVA table before the user confirms the precision"
       ]
@@ -103,6 +103,18 @@
         "The output presents all clarification questions together (via AskUserQuestion tool with multiple tabs, or grouped text choices as fallback), not sequential one-by-one",
         "Each question has choices for the user to select from (interactive or text-based)",
         "The output does not generate BVA tables before the user answers all questions"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Registration requires users to be not over 65 years old. The user enters their birthdate and the system calculates age. The valid range is 18 to 65. Generate BVA test cases.",
+      "expected_output": "A BVA test case table that splits the Input column into two: Birthdate (direct input from user) and Transaction Date (indirect input used to calculate age). Each row shows both dates needed to produce the boundary age value.",
+      "files": [],
+      "assertions": [
+        "The output table has separate columns or clearly labeled fields for Birthdate (direct input) and Transaction Date or current date (indirect input)",
+        "The output explains that Birthdate is what the user enters (direct input) and Transaction Date is when the system checks age (indirect input)",
+        "The boundary values are expressed as birthdates relative to a transaction date, not just age numbers",
+        "The test cases cover BVA boundaries for both minimum age (18) and maximum age (65)"
       ]
     }
   ]

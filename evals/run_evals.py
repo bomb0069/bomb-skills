@@ -38,7 +38,7 @@ PROJECT_DIR = EVALS_DIR.parent
 SKILLS_DIR = PROJECT_DIR / "skills"
 
 MODEL_EVAL = "sonnet"
-MODEL_GRADING = "haiku"
+MODEL_GRADING = "sonnet"
 DEPLOY_DIR = PROJECT_DIR.parent / f"deploy-{PROJECT_DIR.name}"
 
 

@@ -122,6 +122,25 @@ Column definitions:
 - **Input**: The concrete test data value, ready to copy-paste
 - **Expected Output**: Whether the system should accept or reject the value (e.g., "Invalid - rejected", "Valid - accepted")
 
+#### Calculated Fields (Direct vs Indirect Input)
+
+When a condition is based on a **calculated value** (e.g., age calculated from birthdate), the test case table must split the Input column to show all inputs involved:
+
+- **Direct input**: What the user actually enters (e.g., birthdate)
+- **Indirect input**: The reference value used in the calculation (e.g., transaction date / current date)
+
+Use this extended table format:
+
+| ID | Name | Description | Direct Input (Birthdate) | Indirect Input (Transaction Date) | Calculated Value | Expected Output |
+|---|---|---|---|---|---|---|
+
+This makes it clear:
+- Which values the tester needs to set up
+- How the boundary age is achieved through the combination of dates
+- That the transaction/current date is a test variable too (not just "today")
+
+Apply this format whenever the boundary condition depends on a calculation between two or more input values, not just a single field.
+
 ## Example
 
 **User prompt**: "Age field accepts 18 to 60"
@@ -217,3 +236,28 @@ I need to clarify a few things before generating test cases.
 - Tab 1 header "Age", question "How does your system capture age?", options: "Whole number" (integer, step = 1 year), "Birthdate" (system calculates, step = 1 day)
 - Tab 2 header "Fee", question "What is the smallest fee amount?", options: "0.01 (satang)" (boundary = 4,999.99), "1 (whole baht)" (boundary = 4,999), "100 (hundred baht)" (boundary = 4,900)
 ]*
+
+## Example: Birthdate-Based Age (Calculated Field)
+
+**User prompt**: "Registration requires users to be between 18 and 65 years old. The user enters their birthdate and the system calculates age. Generate BVA test cases."
+
+**Output**:
+
+**Input Analysis**
+- Field: Age (calculated from birthdate)
+- Type: Calculated — direct input is birthdate, indirect input is transaction date
+- Range: 18 to 65 years old
+- Step: 1 day
+
+**BVA Test Cases**
+
+Assuming transaction date = **2026-03-28**:
+
+| ID | Name | Description | Direct Input (Birthdate) | Indirect Input (Transaction Date) | Calculated Age | Expected Output |
+|---|---|---|---|---|---|---|
+| TC-01 | Below minimum age | Born 1 day after the 18th birthday cutoff. Age is 17 years, 364 days — not yet 18. | 2008-03-29 | 2026-03-28 | 17y 364d | Invalid - rejected |
+| TC-02 | Minimum age boundary | Born exactly 18 years ago. Age is exactly 18. | 2008-03-28 | 2026-03-28 | 18y 0d | Valid - accepted |
+| TC-03 | Above minimum age | Born 1 day before the 18th birthday cutoff. Age is 18 years, 1 day. | 2008-03-27 | 2026-03-28 | 18y 1d | Valid - accepted |
+| TC-04 | Below maximum age | Born 1 day after the 65th birthday cutoff. Age is 64 years, 364 days. | 1961-03-29 | 2026-03-28 | 64y 364d | Valid - accepted |
+| TC-05 | Maximum age boundary | Born exactly 65 years ago. Age is exactly 65. | 1961-03-28 | 2026-03-28 | 65y 0d | Valid - accepted |
+| TC-06 | Above maximum age | Born 1 day before the 65th birthday cutoff. Age is 65 years, 1 day. | 1961-03-27 | 2026-03-28 | 65y 1d | Invalid - rejected |
