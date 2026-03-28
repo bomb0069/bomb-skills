@@ -1,8 +1,8 @@
 # test-engineer Skill — Examples
 
-## Example: Basic Numeric BVA (Clear Precision)
+## Example: Basic Numeric BVA with Business Test Data
 
-**User prompt**: "Age field accepts 18 to 60 (integer)"
+**User prompt**: "Age field accepts 18 to 60 (integer). This is for a car insurance application targeting working adults."
 
 **Output**:
 
@@ -10,8 +10,9 @@
 - Field: Age
 - Type: Numeric (integer)
 - Range: 18 to 60
+- Business context: Car insurance for working adults
 
-**BVA Test Cases**
+**Unit Test Cases (BVA boundaries)**
 
 | ID | Name | Description | Input: Age | Expected Output |
 |---|---|---|---|---|
@@ -21,6 +22,16 @@
 | TC-04 | Below maximum age | Enter age 59, just below maximum of 60. System should accept. | 59 | Valid - accepted |
 | TC-05 | Maximum age boundary | Enter age 60, the highest allowed. System should accept. | 60 | Valid - accepted |
 | TC-06 | Above maximum age | Enter age 61, one above maximum of 60. System should reject. | 61 | Invalid - rejected |
+
+**Business Test Cases (for acceptance/integration testing)**
+
+| ID | Name | Description | Input: Age | Expected Output |
+|---|---|---|---|---|
+| BT-01 | New driver | Age 22, a typical young driver just starting to drive. Common first-time insurance buyer. | 22 | Valid - accepted |
+| BT-02 | Young professional | Age 28, early career working adult. High volume segment for car insurance. | 28 | Valid - accepted |
+| BT-03 | Mid-career family | Age 38, established professional with family. Typical policyholder. | 38 | Valid - accepted |
+| BT-04 | Senior professional | Age 50, experienced worker. May have different risk profile. | 50 | Valid - accepted |
+| BT-05 | Near-retirement | Age 58, close to maximum age. Important to verify late-career coverage. | 58 | Valid - accepted |
 
 ## Example: Single-Bound Requirement
 

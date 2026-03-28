@@ -130,6 +130,26 @@ Column definitions:
 - **Input: {FieldName}**: Concrete test data value, ready to copy-paste. Always include the field name after `Input:`
 - **Expected Output**: Whether the system should accept or reject (e.g., "Invalid - rejected", "Valid - accepted")
 
+### Step 4: Generate Business Test Data
+
+After generating the **Unit Test Cases** table (BVA boundaries), generate a second table: **Business Test Cases**.
+
+Business test data represents **realistic values from the business domain** — typical users, common data patterns, statistical norms, or business-critical scenarios. These are NOT boundary values; they are values that real users would actually enter, used for acceptance or integration level testing.
+
+**How to identify business test data:**
+1. Look for business context in the user's prompt (e.g., "car insurance", "loan application", "e-commerce")
+2. If context is provided, generate realistic values based on that domain
+3. If no business context is given, ask the user using `AskUserQuestion`:
+   - "What is the typical profile of your users?" or "What values do most users enter?"
+   - Provide suggested options based on the domain (e.g., for age: "Young adults 20-30", "Mid-career 30-50", "All ages evenly")
+
+**Business Test Cases table format** — same columns as unit test cases, but:
+- ID prefix: `BT-01`, `BT-02` (instead of `TC-01`)
+- Name: describes the business scenario (e.g., "Typical young professional", "High-income applicant")
+- Description: references business context, target user, or statistical likelihood
+- All values must be within the valid range (these test realistic usage, not boundaries)
+- Label the table as **"Business Test Cases (for acceptance/integration testing)"**
+
 ## Examples
 
 For worked examples of each scenario, see [references/examples.md](references/examples.md).
@@ -138,5 +158,6 @@ For worked examples of each scenario, see [references/examples.md](references/ex
 
 1. **Input Analysis** block (field, type, range, precision)
 2. If clarification needed → call `AskUserQuestion` tool, then stop
-3. If ready → **BVA Test Cases** table: `ID | Name | Description | Input: {Field} | Expected Output`
-4. For calculated fields → split input: `Input: {Field} (direct) | Input: {Field} (indirect) | Calculated: {Field}`
+3. If ready → **Unit Test Cases** table (BVA boundaries): `TC-01 | ... | Input: {Field} | Expected Output`
+4. **Business Test Cases** table (realistic domain data): `BT-01 | ... | Input: {Field} | Expected Output`
+5. For calculated fields → split input: `Input: {Field} (direct) | Input: {Field} (indirect) | Calculated: {Field}`

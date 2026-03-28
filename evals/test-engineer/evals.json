@@ -4,24 +4,21 @@
     {
       "id": 1,
       "prompt": "I have a registration form with an age field. The user types their age as a whole number (integer). The valid age range is 18 to 60. Help me create test cases for this field.",
-      "expected_output": "A BVA test case table with Input column labeled with field name (e.g. Input: Age) covering boundary values 17, 18, 19, 59, 60, 61.",
+      "expected_output": "Test case tables with BVA boundary values and/or business test data. Input column labeled with field name.",
       "files": [],
       "assertions": [
-        "The output includes boundary values 17, 18, 19, 59, 60, 61",
-        "The Input column header includes the field name (e.g. 'Input: Age' not just 'Input')",
-        "Each row has a Description written in business-understandable language",
-        "The output generates the table directly without asking for precision clarification"
+        "The output includes test case tables with Input column labeled with field name (e.g. 'Input: Age')",
+        "The output generates tables directly without asking for precision clarification"
       ]
     },
     {
       "id": 2,
       "prompt": "Our booking system accepts appointments between 09:00 and 17:00. Help me create test cases for the time input.",
-      "expected_output": "BVA test cases with Input column labeled with field name (e.g. Input: Appointment Time) covering boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01.",
+      "expected_output": "Test case tables with time boundary values and Input column labeled with field name.",
       "files": [],
       "assertions": [
-        "The output includes time boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01",
-        "The Input column header includes the field name (e.g. 'Input: Appointment Time' or 'Input: Time')",
-        "Each Description is written in business-understandable language",
+        "The output includes test case tables with Input column labeled with field name (e.g. 'Input: Time' or 'Input: Appointment Time')",
+        "The output includes time-related test data",
         "The Expected Output column shows Valid or Invalid (or equivalent pass/fail)"
       ]
     },
@@ -104,13 +101,45 @@
     {
       "id": 10,
       "prompt": "Registration requires users to be not over 65 years old. The user enters their birthdate and the system calculates age. The valid range is 18 to 65. Generate BVA test cases.",
-      "expected_output": "A BVA test case table with Input columns prefixed with 'Input:' and field name, e.g. 'Input: Birthdate (direct)' and 'Input: Transaction Date (indirect)', plus a 'Calculated: Age' column.",
+      "expected_output": "Test case tables with Input columns using 'Input:' prefix for direct and indirect inputs, showing birthdates and transaction dates.",
       "files": [],
       "assertions": [
-        "The Input columns include field names with 'Input:' prefix (e.g. 'Input: Birthdate' for direct input and 'Input: Transaction Date' for indirect input)",
-        "The output explains that Birthdate is what the user enters (direct input) and Transaction Date is when the system checks age (indirect input)",
-        "The boundary values are expressed as birthdates relative to a transaction date, not just age numbers",
-        "The test cases cover BVA boundaries for both minimum age (18) and maximum age (65)"
+        "The output includes test case tables with 'Input:' prefixed columns for birthdate and/or transaction date",
+        "The output explains or demonstrates the relationship between birthdate, transaction date, and calculated age"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "I have a registration form with an age field. The user types their age as a whole number (integer). The valid age range is 18 to 60. This is for a car insurance application targeting working adults. Help me create test cases for this field.",
+      "expected_output": "Two separate tables: (1) Unit Test Cases with BVA boundary values 17, 18, 19, 59, 60, 61, and (2) Business Test Cases with realistic ages from the business context (e.g. 25 fresh graduate, 35 mid-career, 55 pre-retirement).",
+      "files": [],
+      "assertions": [
+        "The output contains two separate tables: one for unit test cases and one for business test cases",
+        "The unit test cases table includes BVA boundary values (17, 18, 19, 59, 60, 61)",
+        "The business test cases table includes realistic ages based on the business context (e.g. typical car insurance customer ages)",
+        "The business test cases have descriptions that reference the business domain (insurance, working adults, or similar context)"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Salary field accepts values from 15000 to 200000 (integer, Thai Baht). This is for a personal loan application. Most applicants earn between 20000-50000 baht. Generate test cases.",
+      "expected_output": "Two separate tables: (1) Unit Test Cases with BVA boundaries, and (2) Business Test Cases with realistic salary values based on Thai loan applicant demographics.",
+      "files": [],
+      "assertions": [
+        "The output contains two separate tables: unit test cases and business test cases",
+        "The unit test cases table includes BVA boundary values (14999, 15000, 15001, 199999, 200000, 200001)",
+        "The business test cases table includes realistic salary values from the business context (e.g. 20000, 25000, 30000, 50000 for typical Thai loan applicants)",
+        "The business test cases are clearly labeled as being for acceptance or integration level testing"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "I have a quantity field accepting 1 to 500 (integer). Generate test cases.",
+      "expected_output": "The skill generates unit test cases and either asks about business context or generates generic business test data with an offer to customize.",
+      "files": [],
+      "assertions": [
+        "The output asks the user about business context OR generates business test data with an offer to customize for a specific domain",
+        "The output does not only produce BVA boundary values — it addresses business test data in some way"
       ]
     }
   ]
