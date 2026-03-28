@@ -524,6 +524,7 @@ def improve_skill(skill_name: str):
 ## Instructions
 
 Based on the failed assertions and human feedback above, suggest specific improvements to the SKILL.md.
+Each suggestion should be a single, independent change that can be approved or rejected separately.
 
 Guidelines:
 - Generalize from feedback — fixes should address underlying issues, not just patch specific test cases
@@ -531,26 +532,123 @@ Guidelines:
 - Explain the why — reasoning-based instructions work better than rigid directives
 - If all evals pass and feedback is only about quality, focus on clarity and precision
 
-Output the complete improved SKILL.md (with frontmatter). Explain each change briefly before the file."""
+Respond in this exact JSON format (no markdown fences, no other text):
+{{
+  "suggestions": [
+    {{
+      "title": "Short title of the change",
+      "reason": "Why this change is needed, referencing specific eval feedback",
+      "old_text": "The exact text in SKILL.md to replace (must match exactly, use enough context to be unique)",
+      "new_text": "The replacement text"
+    }}
+  ]
+}}
+
+IMPORTANT:
+- old_text must be an exact substring of the current SKILL.md
+- Each suggestion must be independent — do not assume other suggestions are applied
+- If no changes are needed, return {{"suggestions": []}}"""
 
     print(f"=== Improving: {skill_name} (based on {iteration_dir.name}) ===")
-    print(f"Sending {len(eval_signals)} eval signals to Claude...")
+    print(f"Sending {len(eval_signals)} eval signals to Claude...\n")
 
     result = run_claude(improve_prompt, model=MODEL_EVAL)
-    suggestion = result.get("result", "")
+    response_text = result.get("result", "")
 
-    if not suggestion:
+    if not response_text:
         print(f"Error: No response from Claude. {result.get('error', '')}")
         sys.exit(1)
 
-    # Save suggestion to workspace
-    suggestion_path = iteration_dir / "improvement_suggestion.md"
-    with open(suggestion_path, "w") as f:
-        f.write(suggestion)
+    # Parse suggestions JSON
+    try:
+        cleaned = response_text.strip()
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[1:])
+        if cleaned.endswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[:-1])
+        data = json.loads(cleaned.strip())
+        suggestions = data.get("suggestions", [])
+    except (json.JSONDecodeError, ValueError):
+        print("Error: Could not parse suggestions from Claude.")
+        print(f"Raw response:\n{response_text[:500]}")
+        # Save raw response for debugging
+        suggestion_path = iteration_dir / "improvement_suggestion_raw.md"
+        with open(suggestion_path, "w") as f:
+            f.write(response_text)
+        print(f"Raw response saved to: {suggestion_path}")
+        sys.exit(1)
 
-    print(f"\n{suggestion}")
-    print(f"\n--- Suggestion saved to: {suggestion_path} ---")
-    print(f"Review the suggestion, apply changes to skills/{skill_name}/SKILL.md, then run evals again.")
+    if not suggestions:
+        print("No suggestions — Claude thinks the skill is fine as-is.")
+        return
+
+    # Save all suggestions to workspace
+    suggestion_path = iteration_dir / "improvement_suggestions.json"
+    with open(suggestion_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+    # Present each suggestion for approval
+    print(f"Claude proposed {len(suggestions)} suggestion(s):\n")
+    approved = []
+    current_content = skill_content
+
+    for i, s in enumerate(suggestions, 1):
+        print(f"{'='*60}")
+        print(f"Suggestion {i}/{len(suggestions)}: {s['title']}")
+        print(f"{'='*60}")
+        print(f"Reason: {s['reason']}\n")
+        print(f"--- REMOVE ---")
+        print(s["old_text"])
+        print(f"\n--- REPLACE WITH ---")
+        print(s["new_text"])
+        print()
+
+        # Check if old_text exists in current content
+        if s["old_text"] not in current_content:
+            print("[!] Warning: old_text not found in current SKILL.md — skipping.")
+            print()
+            continue
+
+        while True:
+            choice = input(f"Apply this change? [y]es / [n]o / [q]uit: ").strip().lower()
+            if choice in ("y", "yes", "n", "no", "q", "quit"):
+                break
+            print("Please enter y, n, or q.")
+
+        if choice in ("q", "quit"):
+            print("\nStopping — no more suggestions will be reviewed.")
+            break
+        elif choice in ("y", "yes"):
+            current_content = current_content.replace(s["old_text"], s["new_text"], 1)
+            approved.append(s)
+            print("[+] Approved.\n")
+        else:
+            print("[-] Skipped.\n")
+
+    if not approved:
+        print("No suggestions approved. SKILL.md unchanged.")
+        return
+
+    # Write updated SKILL.md
+    with open(skill_md_path, "w") as f:
+        f.write(current_content)
+
+    print(f"\n{'='*60}")
+    print(f"Applied {len(approved)}/{len(suggestions)} suggestions to skills/{skill_name}/SKILL.md")
+
+    # Save applied changes log
+    applied_path = iteration_dir / "applied_suggestions.json"
+    with open(applied_path, "w") as f:
+        json.dump({"applied": approved}, f, indent=2)
+
+    # Ask to run evals
+    print()
+    run_now = input("Run evals now to verify? [y/n]: ").strip().lower()
+    if run_now in ("y", "yes"):
+        print()
+        spec = load_eval_spec(skill_name)
+        results = run_eval(skill_name, spec)
+        print_results(results)
 
 
 def list_evals():
