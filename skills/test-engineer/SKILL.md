@@ -169,17 +169,23 @@ Column definitions:
 
 For each BVA-applicable condition, generate **Business Test Cases** alongside the unit test cases.
 
-Business test data = realistic values from the business domain (typical users, common patterns, business-critical scenarios). NOT boundary values — values that real users actually enter.
+Business test data = realistic values from the business domain — what real users actually enter. This includes **both valid AND invalid** realistic values.
+
+**IMPORTANT: Business test data must include failure scenarios.** Real users submit invalid data (oversized files, wrong formats, out-of-range values). These are critical for acceptance testing. For example:
+- File size condition: valid (3MB, 15MB, 50MB) AND invalid (150MB oversized, 0MB empty)
+- File type condition: valid (PDF, DOCX) AND invalid (JPG photo, EXE executable)
+- Age condition: valid (25, 35, 50) AND invalid (10 child, 80 elderly)
 
 **How to identify business test data:**
-1. Look for business context in the user's prompt (e.g., "car insurance", "loan application")
-2. If context is provided, generate realistic values based on that domain
-3. If no context, ask the user via `AskUserQuestion` or generate generic data with an offer to customize
+1. Look for business context in the user's prompt
+2. Generate realistic **valid** values (common/typical usage)
+3. Generate realistic **invalid** values (common mistakes, edge cases users actually hit)
+4. If no context, ask the user via `AskUserQuestion` or generate generic data with an offer to customize
 
 **Business Test Cases table format:**
 - ID prefix: `BT-01`, `BT-02` (instead of `TC-01`)
-- Name: business scenario (e.g., "Typical young professional")
-- All values within valid range
+- Name: business scenario (e.g., "Typical young professional", "Oversized upload attempt")
+- Include both valid AND invalid values — label each clearly in Expected Output
 - Label: **"Business Test Cases (for acceptance/integration testing)"**
 
 ### Step 5: Combined Test Scenarios (Decision Table)
@@ -190,12 +196,12 @@ This table uses **decision table analysis** — it combines business test data f
 
 Rules:
 - ID prefix: `TS-01`, `TS-02` (for Test Scenario)
-- The table has `Input:` columns for ALL BVA-applicable conditions
+- The table has `Input:` columns for ALL applicable conditions (BVA and EP)
 - Each row is a combination of business test data values from different conditions
-- All combinations: if condition A has 3 business values and condition B has 3 business values → 9 scenarios
+- Combine ALL business test data including **both valid and invalid values** — this means some scenarios pass (all inputs valid) and some fail (any input invalid)
+- All combinations: if condition A has 5 business values (3 valid + 2 invalid) and condition B has 4 values (2 valid + 2 invalid) → 20 scenarios with mixed pass/fail outcomes
 - Label: **"Test Scenarios (combined decision table — for acceptance/integration testing)"**
-- Conditions that were skipped (not BVA-applicable) are excluded from this table
-- Description should explain the business meaning of the combination
+- Description should explain the business meaning of the combination and why it passes or fails
 
 ## Examples
 

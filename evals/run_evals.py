@@ -127,7 +127,7 @@ def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL
             cmd,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=300,
         )
         if result.returncode != 0:
             return {"error": result.stderr.strip(), "result": "", "duration_ms": 0, "usage": {}}

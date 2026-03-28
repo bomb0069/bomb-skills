@@ -195,6 +195,19 @@
         "The EP test cases use the same table format as BVA (ID, Name, Description, Input: field, Expected Output)",
         "The output ends with a combined Test Scenarios table"
       ]
+    },
+    {
+      "id": 19,
+      "prompt": "The system accepts documents in PDF, DOCX, and XLSX formats with less than 100 MB. All other file types should be rejected with an error message. File size minimum is 1 MB, precision is 1 MB. Generate test cases.",
+      "expected_output": "Business test cases include BOTH valid and invalid realistic values (e.g. valid: 15MB PDF report, invalid: 150MB oversized file, invalid: JPG photo). Test Scenarios table combines ALL business data (valid + invalid) so some scenarios pass and some fail.",
+      "files": [],
+      "assertions": [
+        "The business test cases for file size include both valid values (e.g. 3MB, 15MB, 50MB) AND invalid values (e.g. 150MB, 200MB oversized files)",
+        "The business test cases for file type include both valid types (PDF, DOCX, XLSX) AND invalid types (e.g. JPG, PNG, EXE)",
+        "The Test Scenarios decision table includes combinations that result in BOTH valid and invalid expected outputs",
+        "The Test Scenarios table includes at least one scenario with invalid file type + valid size (rejected)",
+        "The Test Scenarios table includes at least one scenario with valid file type + invalid size (rejected)"
+      ]
     }
   ]
 }
