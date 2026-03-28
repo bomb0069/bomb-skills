@@ -6,6 +6,11 @@ Uses Claude Code CLI (claude -p) as subagent to execute evals.
 Each eval runs twice: with_skill (SKILL.md loaded) and without_skill (baseline).
 A separate grading call evaluates assertions against actual output.
 
+Parallelism:
+- All evals run concurrently (ThreadPoolExecutor)
+- Within each eval, with_skill and without_skill run concurrently
+- Grading uses haiku model for speed
+
 Follows the agentskills.io eval format:
 - Evals defined in evals/<skill-name>/evals.json
 - Results stored in <skill-name>-workspace/iteration-N/
@@ -23,11 +28,15 @@ import argparse
 import json
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 EVALS_DIR = Path(__file__).parent
 PROJECT_DIR = EVALS_DIR.parent
 SKILLS_DIR = PROJECT_DIR / "skills"
+
+MODEL_EVAL = "sonnet"
+MODEL_GRADING = "haiku"
 
 
 def load_eval_spec(skill_name: str) -> dict:
@@ -93,13 +102,13 @@ def create_workspace_structure(skill_name: str, spec: dict) -> Path:
     return iteration_dir
 
 
-def run_claude(prompt: str, system_prompt: str | None = None) -> dict:
+def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL_EVAL) -> dict:
     """Run a prompt through Claude Code CLI and return parsed JSON result."""
     cmd = [
         "claude", "-p", prompt,
         "--output-format", "json",
         "--no-session-persistence",
-        "--model", "sonnet",
+        "--model", model,
     ]
     if system_prompt:
         cmd.extend(["--system-prompt", system_prompt])
@@ -139,7 +148,7 @@ def extract_timing(claude_result: dict) -> dict:
 
 
 def grade_assertions(output: str, assertions: list[str]) -> dict:
-    """Use Claude to grade assertions against actual output."""
+    """Use Claude (haiku) to grade assertions against actual output."""
     if not assertions:
         return {
             "assertion_results": [],
@@ -168,13 +177,13 @@ Respond in this exact JSON format (no markdown, no code fences):
     result = run_claude(
         grading_prompt,
         system_prompt="You are an eval grader. Output only valid JSON, no markdown fences.",
+        model=MODEL_GRADING,
     )
 
     response_text = result.get("result", "")
 
     # Try to parse grading response as JSON
     try:
-        # Strip potential markdown fences
         cleaned = response_text.strip()
         if cleaned.startswith("```"):
             cleaned = "\n".join(cleaned.split("\n")[1:])
@@ -182,7 +191,6 @@ Respond in this exact JSON format (no markdown, no code fences):
             cleaned = "\n".join(cleaned.split("\n")[:-1])
         grading = json.loads(cleaned.strip())
     except (json.JSONDecodeError, ValueError):
-        # Fallback: mark all as needing manual review
         grading = {
             "assertion_results": [
                 {"text": a, "passed": None, "evidence": f"Grading parse failed. Raw: {response_text[:200]}"}
@@ -205,79 +213,84 @@ Respond in this exact JSON format (no markdown, no code fences):
     return grading
 
 
-def run_single_eval(ev: dict, skill_name: str, iteration_dir: Path) -> dict:
-    """Run a single eval (with_skill and without_skill) and write results."""
+def run_variant(ev: dict, variant: str, skill_name: str, iteration_dir: Path) -> dict:
+    """Run a single variant (with_skill or without_skill) for one eval."""
     eval_name = f"eval-{ev['id']}"
     prompt = ev["prompt"]
     assertions = ev.get("assertions", [])
-    skill_md_path = SKILLS_DIR / skill_name / "SKILL.md"
+    eval_dir = iteration_dir / eval_name / variant
 
+    # Build system prompt
+    if variant == "with_skill":
+        skill_md_path = SKILLS_DIR / skill_name / "SKILL.md"
+        skill_content = skill_md_path.read_text()
+        system_prompt = f"Follow the instructions in this skill:\n\n{skill_content}"
+    else:
+        system_prompt = None
+
+    # Execute prompt via Claude CLI
+    claude_result = run_claude(prompt, system_prompt)
+
+    # Save raw output
+    output_text = claude_result.get("result", "")
+    with open(eval_dir / "outputs" / "response.txt", "w") as f:
+        f.write(output_text)
+
+    # Write timing
+    timing = extract_timing(claude_result)
+    with open(eval_dir / "timing.json", "w") as f:
+        json.dump(timing, f, indent=2)
+
+    # Grade assertions
+    if output_text and assertions:
+        grading = grade_assertions(output_text, assertions)
+    elif not output_text:
+        error = claude_result.get("error", "No output")
+        grading = {
+            "assertion_results": [
+                {"text": a, "passed": False, "evidence": f"No output: {error}"}
+                for a in assertions
+            ],
+            "summary": {
+                "passed": 0,
+                "failed": len(assertions),
+                "total": len(assertions),
+                "pass_rate": 0.0,
+            },
+        }
+    else:
+        grading = {
+            "assertion_results": [],
+            "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0},
+        }
+
+    with open(eval_dir / "grading.json", "w") as f:
+        json.dump(grading, f, indent=2)
+
+    return {
+        "pass_rate": grading.get("summary", {}).get("pass_rate"),
+        "timing": timing,
+    }
+
+
+def run_single_eval(ev: dict, skill_name: str, iteration_dir: Path) -> dict:
+    """Run a single eval — with_skill and without_skill in parallel."""
     eval_result = {"id": ev["id"], "variants": {}}
 
-    for variant in ["with_skill", "without_skill"]:
-        eval_dir = iteration_dir / eval_name / variant
-        print(f"    [{variant}] Running...")
-
-        # Build system prompt
-        if variant == "with_skill":
-            skill_content = skill_md_path.read_text()
-            system_prompt = f"Follow the instructions in this skill:\n\n{skill_content}"
-        else:
-            system_prompt = None
-
-        # Execute prompt via Claude CLI
-        claude_result = run_claude(prompt, system_prompt)
-
-        # Save raw output
-        output_text = claude_result.get("result", "")
-        with open(eval_dir / "outputs" / "response.txt", "w") as f:
-            f.write(output_text)
-
-        # Write timing
-        timing = extract_timing(claude_result)
-        with open(eval_dir / "timing.json", "w") as f:
-            json.dump(timing, f, indent=2)
-
-        # Grade assertions
-        if output_text and assertions:
-            print(f"    [{variant}] Grading {len(assertions)} assertions...")
-            grading = grade_assertions(output_text, assertions)
-        elif not output_text:
-            error = claude_result.get("error", "No output")
-            grading = {
-                "assertion_results": [
-                    {"text": a, "passed": False, "evidence": f"No output: {error}"}
-                    for a in assertions
-                ],
-                "summary": {
-                    "passed": 0,
-                    "failed": len(assertions),
-                    "total": len(assertions),
-                    "pass_rate": 0.0,
-                },
-            }
-        else:
-            grading = {
-                "assertion_results": [],
-                "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0},
-            }
-
-        with open(eval_dir / "grading.json", "w") as f:
-            json.dump(grading, f, indent=2)
-
-        summary = grading.get("summary", {})
-        print(f"    [{variant}] Pass rate: {summary.get('pass_rate', 'N/A')}")
-
-        eval_result["variants"][variant] = {
-            "pass_rate": summary.get("pass_rate"),
-            "timing": timing,
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {
+            executor.submit(run_variant, ev, variant, skill_name, iteration_dir): variant
+            for variant in ["with_skill", "without_skill"]
         }
+        for future in as_completed(futures):
+            variant = futures[future]
+            eval_result["variants"][variant] = future.result()
 
     return eval_result
 
 
 def run_eval(skill_name: str, spec: dict) -> dict:
-    """Run all evaluations for a skill."""
+    """Run all evaluations for a skill — all evals in parallel."""
     skill_exists = check_skill_exists(skill_name)
     iteration_dir = create_workspace_structure(skill_name, spec)
 
@@ -322,23 +335,36 @@ def run_eval(skill_name: str, spec: dict) -> dict:
         write_benchmark(iteration_dir, results["evals"], spec)
         return results
 
-    # Run each eval via Claude CLI
+    # Run all evals in parallel
+    print(f"  Running {len(spec['evals'])} evals in parallel...")
     all_eval_results = []
-    for ev in spec["evals"]:
-        print(f"  Eval {ev['id']}: {ev.get('expected_output', '')[:60]}...")
-        eval_result = run_single_eval(ev, skill_name, iteration_dir)
-        all_eval_results.append(eval_result)
 
-        with_pr = eval_result["variants"].get("with_skill", {}).get("pass_rate")
-        without_pr = eval_result["variants"].get("without_skill", {}).get("pass_rate")
-        status = "passed" if with_pr == 1.0 else "partial" if (with_pr or 0) > 0 else "failed"
+    with ThreadPoolExecutor(max_workers=len(spec["evals"])) as executor:
+        futures = {
+            executor.submit(run_single_eval, ev, skill_name, iteration_dir): ev
+            for ev in spec["evals"]
+        }
+        for future in as_completed(futures):
+            ev = futures[future]
+            eval_result = future.result()
+            all_eval_results.append(eval_result)
 
-        results["evals"].append({
-            "id": ev["id"],
-            "status": status,
-            "with_skill_pass_rate": with_pr,
-            "without_skill_pass_rate": without_pr,
-        })
+            with_pr = eval_result["variants"].get("with_skill", {}).get("pass_rate")
+            without_pr = eval_result["variants"].get("without_skill", {}).get("pass_rate")
+            status = "passed" if with_pr == 1.0 else "partial" if (with_pr or 0) > 0 else "failed"
+
+            print(f"  Eval {ev['id']}: with_skill={with_pr}, without={without_pr} [{status}]")
+
+            results["evals"].append({
+                "id": ev["id"],
+                "status": status,
+                "with_skill_pass_rate": with_pr,
+                "without_skill_pass_rate": without_pr,
+            })
+
+    # Sort results by eval id for consistent output
+    results["evals"].sort(key=lambda e: e["id"])
+    all_eval_results.sort(key=lambda e: e["id"])
 
     write_benchmark(iteration_dir, results["evals"], spec, all_eval_results)
     return results
