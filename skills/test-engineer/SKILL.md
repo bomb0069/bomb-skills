@@ -197,6 +197,7 @@ After ALL conditions have their per-condition tables (Steps 2-4), combine busine
 1. **All combinations** — every value × every value across all conditions. Complete coverage but can be large. Example: A(5 values) × B(4 values) = 20 scenarios.
 2. **Pairwise** — each pair of values from any two conditions appears at least once. Much fewer rows while still covering important interactions. Example: A(5) × B(4) × C(3) → ~15-20 instead of 60.
 3. **Business-driven** — only include the most realistic/important combinations based on business context. Focuses on scenarios real users would actually encounter. Smallest set.
+4. **Sequential (short-circuit)** — follow the business validation order. If an earlier condition fails, stop — don't test later conditions for that scenario. Mirrors how the system actually validates. Fewest scenarios.
 
 After the user selects a method, generate the Test Scenarios table.
 
@@ -216,6 +217,19 @@ Rules for the Test Scenarios table:
 **Pairwise:** Ensure every pair of values from any two conditions appears in at least one scenario. Use an algorithm or manual selection to minimize rows. For 3 conditions with values A(a1,a2,a3), B(b1,b2), C(c1,c2), cover all pairs: (a1,b1), (a1,b2), (a2,b1), etc. AND (a1,c1), (a1,c2), etc. AND (b1,c1), (b1,c2), etc.
 
 **Business-driven:** Select only the combinations that represent realistic end-to-end user journeys. Ask yourself: "Would a real user actually have this combination?" Skip unlikely/impossible combinations. Explain why each scenario is business-relevant in the Description.
+
+**Sequential (short-circuit):** Conditions are evaluated in the order the business requirement specifies. If a condition fails, the system rejects immediately — later conditions are not checked. This means:
+- For each invalid value of condition 1: generate ONE scenario (fails at step 1, other fields use any valid nominal value — their values don't matter since the system never checks them)
+- For valid values of condition 1 × invalid values of condition 2: generate scenarios (passes step 1, fails at step 2)
+- For valid values of condition 1 × valid values of condition 2 × invalid values of condition 3: generate scenarios (passes steps 1-2, fails at step 3)
+- ...and so on until all conditions pass (happy path)
+- Add a "Fails at" column to show which step rejected the scenario
+- Ask the user to confirm the validation order if not explicit in the requirement
+
+Example for file upload (check type first, then size):
+- JPG file, any size → rejected at step 1 (type check), no need to vary size
+- PDF, 150MB → rejected at step 2 (size check)
+- PDF, 15MB → accepted (both pass)
 
 ### Step 6: Offer to Save Results
 

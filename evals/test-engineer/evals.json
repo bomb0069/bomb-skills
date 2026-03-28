@@ -198,12 +198,12 @@
     },
     {
       "id": 20,
-      "prompt": "Login form: username (text, required) AND password (text, required, minimum 8 characters). Generate test cases.",
-      "expected_output": "After generating all test cases, the skill asks the user if they want to save the requirement and analysis result as a markdown file in the test-cases folder.",
+      "prompt": "Quantity field accepts 1 to 100 (integer). This is for an online bookstore. Generate test cases.",
+      "expected_output": "After generating test cases, the output offers to save the result as a markdown file in the test-cases folder.",
       "files": [],
       "assertions": [
-        "The output asks the user whether to save the result as a markdown file",
-        "The suggested file path uses test-cases/ folder with the requirement name as filename (e.g. test-cases/login-form.md)"
+        "The output offers to save the result as a markdown file at the end",
+        "The suggested file path uses test-cases/ folder (e.g. test-cases/bookstore-quantity.md)"
       ]
     },
     {
@@ -214,6 +214,18 @@
       "assertions": [
         "The output asks the user to choose a combination method or presents options for how to combine conditions",
         "The output does not generate the Test Scenarios table before the user selects a method"
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "Document upload system validates in this order: first check file type (PDF, DOCX, XLSX only), then check file size (1-99 MB). If file type is invalid, reject immediately without checking size. Use sequential method. File size precision is 1 MB. Generate test cases.",
+      "expected_output": "Test Scenarios using sequential/short-circuit method: invalid file type scenarios only test the type (size irrelevant), valid file type scenarios then test size variations.",
+      "files": [],
+      "assertions": [
+        "The output uses sequential/short-circuit method for combining conditions",
+        "Invalid file type scenarios do NOT vary file size — they show rejection at the type check step without needing to test different sizes",
+        "Valid file type scenarios DO vary file size (valid and invalid sizes)",
+        "The total number of scenarios is significantly fewer than all-combinations would produce"
       ]
     }
   ]
