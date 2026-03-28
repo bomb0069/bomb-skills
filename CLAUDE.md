@@ -81,4 +81,5 @@ Every feature follows this TDD cycle. **Always commit after evals pass.**
 - Never commit a feature without running evals first
 - Eval results must show all assertions passing before committing
 - Each commit should include both the eval changes and the skill changes for that feature
+- Every commit must include the `chats/` folder — always `git add chats/` when staging
 - Workspace results (`*-workspace/`) are generated artifacts — do not commit them
