@@ -46,12 +46,13 @@ If the requirement does **not** make the minimum unit (precision/step size) clea
 **When precision IS clear** — go ahead and generate test cases without asking:
 - The user specifies the format explicitly (e.g., "integer", "2 decimal places", "HH:MM")
 - The user provides boundary values with a visible format (e.g., "09:00 to 17:00" implies HH:MM, "0.01 to 9999.99" implies 2 decimals)
-- The context is unambiguous (e.g., "quantity 1 to 100" is clearly integer)
+- The context is unambiguous for domains without multiple interpretations (e.g., "quantity 1 to 100" is clearly integer — there's no alternative interpretation)
 
-**When precision IS ambiguous** — ask the user before proceeding:
-- The requirement uses vague wording like "not over 65 years old" (is it age-as-integer or birthdate?)
-- Money amounts without decimal info (e.g., "limit 30,000 baht" — is the step 0.01, 1, or 100?)
-- The data type could reasonably be interpreted multiple ways
+**When precision IS ambiguous** — always ask the user before proceeding:
+- **Age** — always ambiguous, even if given as integers like "18 to 60". Age could mean: (a) user types age as a whole number, or (b) user enters a birthdate and the system calculates age in years-months-days. These produce very different boundary values. Always ask.
+- **Money** — ambiguous unless decimal places are explicit. "Limit 30,000 baht" could mean step of 0.01, 1, or 100.
+- **Percentage** — ambiguous unless format is stated. Could be integer (step=1) or decimal (step=0.01).
+- Any domain where the data type could reasonably be interpreted multiple ways.
 
 When asking:
 1. Identify that the precision is ambiguous.
