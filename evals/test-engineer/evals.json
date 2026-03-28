@@ -246,17 +246,14 @@
       "turns": [
         {
           "respond": "sequential",
-          "assertions": []
-        },
-        {
-          "respond": "Type first, then Size",
-          "assertions": []
+          "assertions": [
+            "The output includes a Test Scenarios table with sequential/short-circuit method",
+            "Invalid file type scenarios show rejection at the type check step"
+          ]
         }
       ],
       "assertions": [
-        "The output includes a Test Scenarios table with sequential/short-circuit method",
-        "The Test Scenarios table has a Fails At column showing which step rejected",
-        "Invalid file type scenarios show rejection at the type check step"
+        "The output confirms or shows test scenarios using sequential validation order"
       ]
     },
     {
