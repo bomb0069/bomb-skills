@@ -59,19 +59,18 @@ When asking, use the `AskUserQuestion` tool (see below).
 
 #### How to Ask Clarification Questions
 
-Whenever you need to ask the user a question (missing bound, ambiguous precision, etc.), use the **`AskUserQuestion` tool** to present interactive choices. This gives the user a navigable UI with arrow keys, tabs, and auto-generated "Other" option for custom input — much better than typing answers in text.
+**IMPORTANT**: Whenever you need to ask the user a clarification question (missing bound, ambiguous precision, etc.), you MUST call the `AskUserQuestion` tool. Do NOT write the question as text output. Instead, call the tool directly.
 
-Rules for using `AskUserQuestion`:
-- Each question must have 2-4 options with `label` and `description`
-- The "Other" option is added automatically — do NOT include it in your options
-- If you recommend a specific option, make it the first option and add "(Recommended)" to the label
-- Use short `header` text (max 12 chars) as tab labels (e.g., "Age", "Precision", "Upper limit")
+Rules:
+- First, output your input analysis as text (field name, type, what's missing)
+- Then STOP outputting text and CALL `AskUserQuestion` with your questions
+- Each question needs: a `question` string, a short `header` (max 12 chars, used as tab label), 2-4 `options` each with `label` and `description`, and `multiSelect: false`
+- The "Other" option is added automatically by the tool — do NOT include it
+- If you recommend a specific option, put it first and add "(Recommended)" to the label
 
 #### Multiple Independent Questions
 
-When there are **multiple fields** that each need clarification, do NOT ask questions one by one. Instead, pass **all questions in a single `AskUserQuestion` call** (up to 4 questions). Each question becomes a tab in the UI, so the user can answer them all at once.
-
-This avoids a back-and-forth conversation for each question.
+When there are **multiple fields** that each need clarification, do NOT ask questions one by one. Instead, pass **all questions in a single `AskUserQuestion` call** (up to 4 questions). Each question becomes a separate tab in the UI, so the user can answer all at once without back-and-forth.
 
 Common ambiguous cases:
 - **Age**: Is the input a whole number of years (step = 1 year), or a birthdate where age is calculated in years-months-days? If birthdate, the boundary is not "64 years" but "64 years, 11 months, 29 days" — which means the actual input field is a date, not a number.
@@ -159,21 +158,7 @@ Column definitions:
 
 I found a lower limit of **0**, but no upper limit was provided. To generate complete BVA test cases, I need both boundaries.
 
-Then use `AskUserQuestion` with:
-```json
-{
-  "questions": [{
-    "question": "What is the maximum allowed value for the score field?",
-    "header": "Upper limit",
-    "multiSelect": false,
-    "options": [
-      {"label": "100", "description": "Common for percentage-like scores"},
-      {"label": "999", "description": "Three-digit maximum"},
-      {"label": "10,000", "description": "Large-range score field"}
-    ]
-  }]
-}
-```
+*[Then call `AskUserQuestion` with header "Upper limit", question "What is the maximum allowed value for the score field?", and options: "100" (common for percentage-like scores), "999" (three-digit maximum), "10,000" (large-range score field)]*
 
 ## Example: Ambiguous Precision
 
@@ -193,20 +178,7 @@ Before I generate test cases, I need to clarify the **minimum unit of age data**
 | Age as whole years (integer) | 1 year | 64 | 65 | 66 |
 | Birthdate (year-month-day) | 1 day | 64 years, 11 months, 29 days | Exactly 65 years | 65 years, 0 months, 1 day |
 
-Then use `AskUserQuestion` with:
-```json
-{
-  "questions": [{
-    "question": "How does your system capture age?",
-    "header": "Age input",
-    "multiSelect": false,
-    "options": [
-      {"label": "Whole number", "description": "User enters age as integer (e.g. 64). Step = 1 year."},
-      {"label": "Birthdate", "description": "User enters birthdate, system calculates age. Step = 1 day."}
-    ]
-  }]
-}
-```
+*[Then call `AskUserQuestion` with header "Age input", question "How does your system capture age?", and options: "Whole number" (user enters age as integer, step = 1 year), "Birthdate" (user enters birthdate, system calculates age, step = 1 day)]*
 
 ## Example: Ambiguous Money Precision
 
@@ -227,21 +199,7 @@ Before I generate test cases, I need to clarify the **minimum unit of money** yo
 | 1 (whole baht) | 29,999 | 30,000 | 30,001 |
 | 100 (hundred baht) | 29,900 | 30,000 | 30,100 |
 
-Then use `AskUserQuestion` with:
-```json
-{
-  "questions": [{
-    "question": "What is the smallest deposit amount the system accepts?",
-    "header": "Precision",
-    "multiSelect": false,
-    "options": [
-      {"label": "0.01 (satang)", "description": "Boundary below 30,000 would be 29,999.99"},
-      {"label": "1 (whole baht)", "description": "Boundary below 30,000 would be 29,999"},
-      {"label": "100 (hundred baht)", "description": "Boundary below 30,000 would be 29,900"}
-    ]
-  }]
-}
-```
+*[Then call `AskUserQuestion` with header "Precision", question "What is the smallest deposit amount the system accepts?", and options: "0.01 (satang)" (boundary below 30,000 = 29,999.99), "1 (whole baht)" (boundary below 30,000 = 29,999), "100 (hundred baht)" (boundary below 30,000 = 29,900)]*
 
 ## Example: Multiple Independent Questions
 
@@ -255,29 +213,7 @@ Then use `AskUserQuestion` with:
 
 I need to clarify a few things before generating test cases.
 
-Then use `AskUserQuestion` with both questions in a single call (each becomes a tab):
-```json
-{
-  "questions": [
-    {
-      "question": "How does your system capture age?",
-      "header": "Age",
-      "multiSelect": false,
-      "options": [
-        {"label": "Whole number", "description": "User enters age as integer (e.g. 64). Step = 1 year."},
-        {"label": "Birthdate", "description": "User enters birthdate, system calculates age. Step = 1 day."}
-      ]
-    },
-    {
-      "question": "What is the smallest fee amount the system accepts?",
-      "header": "Fee",
-      "multiSelect": false,
-      "options": [
-        {"label": "0.01 (satang)", "description": "Boundary below 5,000 would be 4,999.99"},
-        {"label": "1 (whole baht)", "description": "Boundary below 5,000 would be 4,999"},
-        {"label": "100 (hundred baht)", "description": "Boundary below 5,000 would be 4,900"}
-      ]
-    }
-  ]
-}
-```
+*[Then call `AskUserQuestion` with TWO questions in a single call — each becomes a tab:
+- Tab 1 header "Age", question "How does your system capture age?", options: "Whole number" (integer, step = 1 year), "Birthdate" (system calculates, step = 1 day)
+- Tab 2 header "Fee", question "What is the smallest fee amount?", options: "0.01 (satang)" (boundary = 4,999.99), "1 (whole baht)" (boundary = 4,999), "100 (hundred baht)" (boundary = 4,900)
+]*
