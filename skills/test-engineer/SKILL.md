@@ -26,19 +26,17 @@ Activate when the user:
 
 ## Instructions
 
-### Step 1: Analyze the Requirement
+### Step 1: Analyze the Requirement — Count Conditions
 
-Read the user's requirement and identify:
-- **Input type**: numeric (integer or decimal) or time (HH:MM or HH:MM:SS)
-- **Minimum value**: the lowest valid value
-- **Maximum value**: the highest valid value
-- **Precision**: integer, decimal places, or time unit (minutes/seconds)
+Read the user's requirement and identify **all conditions** (input fields with constraints). For each condition, identify:
+- **Field name**
+- **Input type**: numeric (integer or decimal), time (HH:MM or HH:MM:SS), or other (text, dropdown, etc.)
+- **Min/max values** if applicable
+- **Precision** if applicable
 
-If the input is not numeric or time-based (e.g., free text, dropdowns), inform the user that BVA is not the appropriate technique and suggest alternatives like Equivalence Partitioning or exploratory testing.
+List all conditions found. For conditions that are NOT numeric or time-based (e.g., free text fields like "comments", dropdowns, checkboxes), **BVA is not applicable** — inform the user and suggest alternatives like Equivalence Partitioning or exploratory testing. Do NOT attempt to apply BVA to text fields by converting them to character-length boundaries — that is a different technique, not what BVA is for. Skip these conditions in Step 2.
 
-If the minimum value is greater than the maximum value, flag this as a likely error and ask the user to clarify before proceeding.
-
-If there are multiple input fields, analyze each field separately and organize the output by field.
+If the minimum value is greater than the maximum value for any condition, flag it as a likely error.
 
 #### Ambiguous Precision / Minimum Unit
 
@@ -81,7 +79,12 @@ If the requirement specifies **only a lower limit** (e.g., "must be at least 0")
 3. Wait for the user's response before generating test cases.
 4. Once both bounds are confirmed, proceed to Step 2 as normal.
 
-### Step 2: Apply BVA Technique
+### Step 2: Per-Condition BVA Loop
+
+For **each BVA-applicable condition** from Step 1, run the full BVA workflow:
+- Check precision (ambiguous? → ask user via `AskUserQuestion`)
+- Check bounds (single-bound? → ask user for missing bound)
+- If BVA not applicable (text, dropdown, etc.) → skip, note it in output
 
 For each identified boundary (min, max), generate these **6 core boundary values**:
 
@@ -99,30 +102,6 @@ Where "1 step" depends on precision:
 - **Decimal (N places)**: step = 10^(-N) (e.g., 2 decimal places → 0.01)
 - **Time (HH:MM)**: step = 1 minute
 - **Time (HH:MM:SS)**: step = 1 second
-
-#### Multiple Conditions (Combined Test Scenarios)
-
-When a requirement has **more than one condition** (e.g., age AND salary), do NOT generate separate tables per field. Instead:
-
-1. **Analyze each condition separately** with BVA to identify the 6 boundary values per field
-2. **Pick a nominal (valid middle) value** for each field — this is used when that field is NOT being boundary-tested
-3. **Combine into ONE test scenario table** with Input columns for ALL fields
-4. Each test case **varies only one field's boundary** while keeping all other fields at their nominal value
-
-This ensures each boundary is tested in isolation, which is the correct BVA approach for multi-condition requirements.
-
-Example structure for 2 conditions (age 20-60, salary 15000-200000):
-- Nominal age = 35 (middle of range)
-- Nominal salary = 100000 (middle of range)
-- When testing age=19 (below min), salary=100000 (nominal)
-- When testing salary=14999 (below min), age=35 (nominal)
-
-The combined table has columns for all fields:
-
-| ID | Name | Description | Input: Age | Input: Salary | Expected Output |
-|---|---|---|---|---|---|
-
-This produces 6 boundary test cases per condition × N conditions = 6N total test cases in one table, each varying exactly one boundary.
 
 ### Step 3: Generate Output
 
@@ -154,34 +133,52 @@ Column definitions:
 - **Input: {FieldName}**: Concrete test data value, ready to copy-paste. Always include the field name after `Input:`
 - **Expected Output**: Whether the system should accept or reject (e.g., "Invalid - rejected", "Valid - accepted")
 
-### Step 4: Generate Business Test Data
+### Step 4: Per-Condition Business Test Data
 
-After generating the **Unit Test Cases** table (BVA boundaries), generate a second table: **Business Test Cases**.
+For each BVA-applicable condition, generate **Business Test Cases** alongside the unit test cases.
 
-Business test data represents **realistic values from the business domain** — typical users, common data patterns, statistical norms, or business-critical scenarios. These are NOT boundary values; they are values that real users would actually enter, used for acceptance or integration level testing.
+Business test data = realistic values from the business domain (typical users, common patterns, business-critical scenarios). NOT boundary values — values that real users actually enter.
 
 **How to identify business test data:**
-1. Look for business context in the user's prompt (e.g., "car insurance", "loan application", "e-commerce")
+1. Look for business context in the user's prompt (e.g., "car insurance", "loan application")
 2. If context is provided, generate realistic values based on that domain
-3. If no business context is given, ask the user using `AskUserQuestion`:
-   - "What is the typical profile of your users?" or "What values do most users enter?"
-   - Provide suggested options based on the domain (e.g., for age: "Young adults 20-30", "Mid-career 30-50", "All ages evenly")
+3. If no context, ask the user via `AskUserQuestion` or generate generic data with an offer to customize
 
-**Business Test Cases table format** — same columns as unit test cases, but:
+**Business Test Cases table format:**
 - ID prefix: `BT-01`, `BT-02` (instead of `TC-01`)
-- Name: describes the business scenario (e.g., "Typical young professional", "High-income applicant")
-- Description: references business context, target user, or statistical likelihood
-- All values must be within the valid range (these test realistic usage, not boundaries)
-- Label the table as **"Business Test Cases (for acceptance/integration testing)"**
+- Name: business scenario (e.g., "Typical young professional")
+- All values within valid range
+- Label: **"Business Test Cases (for acceptance/integration testing)"**
+
+### Step 5: Combined Test Scenarios (Decision Table)
+
+After ALL conditions have their per-condition tables (Steps 2-4), generate a **final combined Test Scenarios table** at the end.
+
+This table uses **decision table analysis** — it combines business test data from ALL conditions using **all combinations**. This is NOT the same as the per-condition tables; it creates end-to-end test scenarios that cover realistic multi-field combinations.
+
+Rules:
+- ID prefix: `TS-01`, `TS-02` (for Test Scenario)
+- The table has `Input:` columns for ALL BVA-applicable conditions
+- Each row is a combination of business test data values from different conditions
+- All combinations: if condition A has 3 business values and condition B has 3 business values → 9 scenarios
+- Label: **"Test Scenarios (combined decision table — for acceptance/integration testing)"**
+- Conditions that were skipped (not BVA-applicable) are excluded from this table
+- Description should explain the business meaning of the combination
 
 ## Examples
 
 For worked examples of each scenario, see [references/examples.md](references/examples.md).
 
-**Output pattern** — every response follows this structure:
+**Output pattern for multiple conditions:**
 
-1. **Input Analysis** block (field, type, range, precision)
-2. If clarification needed → call `AskUserQuestion` tool, then stop
-3. If ready → **Unit Test Cases** table (BVA boundaries): `TC-01 | ... | Input: {Field} | Expected Output`
-4. **Business Test Cases** table (realistic domain data): `BT-01 | ... | Input: {Field} | Expected Output`
-5. For calculated fields → split input: `Input: {Field} (direct) | Input: {Field} (indirect) | Calculated: {Field}`
+1. **Input Analysis** — list all conditions, note which are BVA-applicable
+2. **Per-condition sections** (for each BVA-applicable condition):
+   - Unit Test Cases (TC-01...) — BVA boundaries
+   - Business Test Cases (BT-01...) — realistic domain values
+3. **Test Scenarios** (last table) — combined decision table (TS-01...) using all combinations of business data across conditions
+
+**Output pattern for single condition:**
+
+1. **Input Analysis**
+2. **Unit Test Cases** (TC-01...)
+3. **Business Test Cases** (BT-01...)

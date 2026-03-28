@@ -142,26 +142,35 @@
     {
       "id": 14,
       "prompt": "Personal loan application: applicant age must be 20-60 (integer) AND monthly salary must be 15000-200000 (integer, Thai Baht). Generate test cases.",
-      "expected_output": "The skill analyzes each condition separately with BVA, then combines them into one test scenario table. Each test case tests one boundary condition at a time while keeping the other field at a valid (nominal) value. The table has Input columns for both fields.",
+      "expected_output": "Per-condition tables first (unit + business test cases for age, then for salary), followed by a combined Test Scenarios decision table at the end that combines business test data from both conditions.",
       "files": [],
       "assertions": [
-        "The output identifies two separate conditions (age and salary) and analyzes each with BVA",
-        "The output produces a combined test scenario table with Input columns for both fields (e.g. Input: Age and Input: Salary)",
-        "When testing age boundaries, the salary value is set to a valid nominal value (not a boundary)",
-        "When testing salary boundaries, the age value is set to a valid nominal value (not a boundary)",
-        "The combined table covers BVA boundaries for both conditions"
+        "The output shows per-condition test cases: age unit tests and salary unit tests as separate sections",
+        "The output shows business test cases for each condition",
+        "The output ends with a combined Test Scenarios table that has Input columns for both fields (age and salary)",
+        "The Test Scenarios table uses combinations of business test data (not just BVA boundaries with nominal values)"
       ]
     },
     {
       "id": 15,
       "prompt": "Insurance policy: customer age 25-65 (integer), coverage amount 100000-5000000 (integer, Thai Baht), and policy duration 1-30 years (integer). Generate test cases.",
-      "expected_output": "The skill analyzes three conditions, applies BVA to each, and combines into one test scenario table with three Input columns. Each test case tests one field's boundary while other fields use valid nominal values.",
+      "expected_output": "Per-condition tables first (unit + business for each of 3 conditions), followed by a combined Test Scenarios decision table with all 3 Input columns using business data combinations.",
       "files": [],
       "assertions": [
-        "The output identifies three separate conditions (age, coverage amount, duration)",
-        "The output produces a combined test scenario table with Input columns for all three fields",
-        "Each test case varies only one field's boundary while keeping other fields at valid nominal values",
-        "The combined table covers BVA boundaries for all three conditions"
+        "The output shows per-condition test cases for all three conditions (age, coverage, duration)",
+        "The output ends with a combined Test Scenarios table with Input columns for all three fields",
+        "The Test Scenarios table uses all combinations of business test data across conditions"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "E-commerce order: customer name (text, required) AND quantity 1-100 (integer) AND total price 1-50000 (2 decimal places, Thai Baht). Generate test cases.",
+      "expected_output": "The skill identifies 3 conditions, skips BVA for the text field (not applicable), applies BVA to quantity and price, generates per-condition tables, then a combined Test Scenarios decision table.",
+      "files": [],
+      "assertions": [
+        "The output notes that the customer name field is not suitable for BVA and skips it",
+        "The output generates BVA test cases for quantity and price conditions",
+        "The output ends with a combined Test Scenarios table for the applicable conditions"
       ]
     }
   ]
