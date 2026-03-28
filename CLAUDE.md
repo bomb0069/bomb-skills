@@ -41,9 +41,12 @@ bomb-skills/
 ### Key Design Decisions
 
 - **TDD-first**: Always write `evals/<skill-name>/evals.json` before implementing the skill
-- **agentskills.io eval format**: JSON with `id`, `prompt`, `expected_output`, `assertions`
+- **agentskills.io eval format**: JSON with `id`, `prompt`, `expected_output`, `assertions` — this is the project standard, do NOT change to typed assertions (Promptfoo-style) or rename fields to `expectations` (Anthropic skill-creator style)
+- **Assertions are natural language strings** graded by Claude (LLM-as-judge). Do NOT add assertion types, weights, or thresholds
+- **Multi-turn evals**: Use optional `turns` array with `respond` and `assertions` per turn. Uses `claude -p --resume <session_id>` to continue sessions
 - **Workspace results**: `grading.json`, `timing.json`, `benchmark.json`, `feedback.json`
 - **Progressive disclosure**: SKILL.md body < 500 lines; split into references/, scripts/, assets/
+- **Reference specs**: [agentskills.io specification](https://agentskills.io/specification), [agentskills.io evaluating skills](https://agentskills.io/skill-creation/evaluating-skills)
 
 ### Development Workflow
 
