@@ -28,8 +28,7 @@
       "expected_output": "The skill recognizes BVA is not applicable and uses Equivalence Partitioning, either generating EP test cases directly or asking about field constraints first.",
       "files": [],
       "assertions": [
-        "The output recognizes that BVA is not applicable for a free-text field and uses or mentions Equivalence Partitioning",
-        "The output either generates EP test cases or asks about field constraints (required/optional, max length, allowed characters) before generating"
+        "The output generates EP test cases for the text field OR asks about field constraints before generating"
       ]
     },
     {
@@ -207,6 +206,16 @@
         "The Test Scenarios decision table includes combinations that result in BOTH valid and invalid expected outputs",
         "The Test Scenarios table includes at least one scenario with invalid file type + valid size (rejected)",
         "The Test Scenarios table includes at least one scenario with valid file type + invalid size (rejected)"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Login form: username (text, required) AND password (text, required, minimum 8 characters). Generate test cases.",
+      "expected_output": "After generating all test cases, the skill asks the user if they want to save the requirement and analysis result as a markdown file in the test-cases folder.",
+      "files": [],
+      "assertions": [
+        "The output asks the user whether to save the result as a markdown file",
+        "The suggested file path uses test-cases/ folder with the requirement name as filename (e.g. test-cases/login-form.md)"
       ]
     }
   ]

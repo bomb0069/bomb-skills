@@ -203,20 +203,38 @@ Rules:
 - Label: **"Test Scenarios (combined decision table — for acceptance/integration testing)"**
 - Description should explain the business meaning of the combination and why it passes or fails
 
+### Step 6: Offer to Save Results
+
+After generating all test cases and scenarios, add a line at the end asking the user if they want to save the results. Do NOT use `AskUserQuestion` for this — just write it as text so the test case tables above remain visible.
+
+Write this at the end of your output:
+
+---
+**Would you like me to save this requirement and test cases to `test-cases/{requirement-name}.md`?** Just reply "yes" and I'll save it.
+
+Where `{requirement-name}` is the kebab-case name derived from the requirement (e.g., `login-form`, `document-upload`, `personal-loan-application`).
+
+If the user says yes:
+- Create the `test-cases/` folder if it doesn't exist
+- Save the complete output (Input Analysis + all test case tables + Test Scenarios) as a markdown file
+- Confirm the file path to the user after saving
+
 ## Examples
 
 For worked examples of each scenario, see [references/examples.md](references/examples.md).
 
 **Output pattern for multiple conditions:**
 
-1. **Input Analysis** — list all conditions, note which are BVA-applicable
-2. **Per-condition sections** (for each BVA-applicable condition):
-   - Unit Test Cases (TC-01...) — BVA boundaries
-   - Business Test Cases (BT-01...) — realistic domain values
-3. **Test Scenarios** (last table) — combined decision table (TS-01...) using all combinations of business data across conditions
+1. **Input Analysis** — list all conditions, note technique (BVA or EP)
+2. **Per-condition sections** (for each condition):
+   - Unit Test Cases (TC-01...) — BVA boundaries or EP partitions
+   - Business Test Cases (BT-01...) — realistic domain values (valid + invalid)
+3. **Test Scenarios** (last table) — combined decision table (TS-01...)
+4. **Offer to save** — ask user to save to `test-cases/` folder
 
 **Output pattern for single condition:**
 
 1. **Input Analysis**
 2. **Unit Test Cases** (TC-01...)
 3. **Business Test Cases** (BT-01...)
+4. **Offer to save**
