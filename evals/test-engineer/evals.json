@@ -3,13 +3,14 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "I have a registration form with an age field. The valid age range is 18 to 60. Help me create test cases for this field.",
-      "expected_output": "The skill detects that age is ambiguous — could be whole years (integer) or birthdate-calculated — and asks the user to clarify the precision before generating test cases.",
+      "prompt": "I have a registration form with an age field. The user types their age as a whole number (integer). The valid age range is 18 to 60. Help me create test cases for this field.",
+      "expected_output": "A BVA test case table with columns ID, Name, Description, Input, Expected Output covering boundary values 17, 18, 19, 59, 60, 61 with business-friendly descriptions. No clarification needed since precision is explicitly stated as integer.",
       "files": [],
       "assertions": [
-        "The output asks the user to clarify the minimum unit or precision of age (e.g. whole years vs birthdate with year-month-day)",
-        "The output explains how different precision levels lead to different boundary values",
-        "The output does not generate a final BVA table before the user confirms the precision"
+        "The output includes boundary values 17, 18, 19, 59, 60, 61",
+        "The table has columns: ID, Name, Description, Input, Expected Output",
+        "Each row has a Description written in business-understandable language",
+        "The output generates the table directly without asking for precision clarification"
       ]
     },
     {
