@@ -71,19 +71,18 @@ Where "1 step" depends on precision:
 
 ### Step 3: Generate Output
 
-Present the test cases in a **markdown table** with these columns:
+Present the test cases in a **markdown table** with these 5 columns:
 
-| Test Case ID | Input Value | Expected Result | Boundary Type |
-|---|---|---|---|
-| TC-01 | {value} | Valid / Invalid | {description} |
+| ID | Name | Description | Input | Expected Output |
+|---|---|---|---|---|
+| TC-01 | {short name} | {business description} | {value} | {result} |
 
-Rules for output:
-- Use sequential test case IDs (TC-01, TC-02, ...)
-- Show concrete values, not formulas
-- Label each as "Valid" or "Invalid"
-- Describe the boundary type (e.g., "Just below minimum", "Maximum boundary")
-- For business users: add a brief explanation of why each boundary matters
-- For technical users: keep it concise and data-focused
+Column definitions:
+- **ID**: Sequential test case ID (TC-01, TC-02, ...)
+- **Name**: Short name describing what this test case covers (e.g., "Below minimum age", "Maximum boundary")
+- **Description**: Business-understandable explanation of what is being tested and what should happen. Write it so a non-technical person can understand the purpose. Example: "Enter age 17, which is one below the minimum allowed age of 18. The system should reject this input."
+- **Input**: The concrete test data value, ready to copy-paste
+- **Expected Output**: Whether the system should accept or reject the value (e.g., "Invalid - rejected", "Valid - accepted")
 
 ## Example
 
@@ -98,14 +97,14 @@ Rules for output:
 
 **BVA Test Cases**
 
-| Test Case ID | Input Value | Expected Result | Boundary Type |
-|---|---|---|---|
-| TC-01 | 17 | Invalid | Just below minimum |
-| TC-02 | 18 | Valid | Minimum boundary |
-| TC-03 | 19 | Valid | Just above minimum |
-| TC-04 | 59 | Valid | Just below maximum |
-| TC-05 | 60 | Valid | Maximum boundary |
-| TC-06 | 61 | Invalid | Just above maximum |
+| ID | Name | Description | Input | Expected Output |
+|---|---|---|---|---|
+| TC-01 | Below minimum age | Enter age 17, which is one below the minimum allowed age of 18. The system should reject this input. | 17 | Invalid - rejected |
+| TC-02 | Minimum age boundary | Enter age 18, which is the lowest allowed age. The system should accept this input. | 18 | Valid - accepted |
+| TC-03 | Above minimum age | Enter age 19, which is just above the minimum. The system should accept this input. | 19 | Valid - accepted |
+| TC-04 | Below maximum age | Enter age 59, which is just below the maximum allowed age of 60. The system should accept this input. | 59 | Valid - accepted |
+| TC-05 | Maximum age boundary | Enter age 60, which is the highest allowed age. The system should accept this input. | 60 | Valid - accepted |
+| TC-06 | Above maximum age | Enter age 61, which is one above the maximum allowed age of 60. The system should reject this input. | 61 | Invalid - rejected |
 
 ## Example: Single-Bound Requirement
 

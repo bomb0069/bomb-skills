@@ -8,19 +8,24 @@
       "files": [],
       "assertions": [
         "The output includes boundary values 17, 18, 19, 59, 60, 61",
-        "Each test case is labeled as valid or invalid",
-        "The output is presented in a structured table format"
+        "The table has columns: ID, Name, Description, Input, Expected Output",
+        "Each row has a Name that describes what the test case covers (e.g. just below minimum, minimum boundary)",
+        "Each row has a Description written in business-understandable language explaining the input and expected outcome",
+        "The Input column shows the concrete test value",
+        "The Expected Output column shows Valid or Invalid (or equivalent pass/fail)"
       ]
     },
     {
       "id": 2,
       "prompt": "Our booking system accepts appointments between 09:00 and 17:00. Help me create test cases for the time input.",
-      "expected_output": "BVA test cases for time range with boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01.",
+      "expected_output": "BVA test cases for time range with columns ID, Name, Description, Input, Expected Output covering boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01.",
       "files": [],
       "assertions": [
         "The output includes time boundary values 08:59, 09:00, 09:01, 16:59, 17:00, 17:01",
-        "Each test case is labeled as valid or invalid",
-        "The output is presented in a structured table format"
+        "The table has columns: ID, Name, Description, Input, Expected Output",
+        "Each Description is written in business-understandable language",
+        "The Input column shows concrete time values",
+        "The Expected Output column shows Valid or Invalid (or equivalent pass/fail)"
       ]
     },
     {
@@ -53,6 +58,20 @@
         "The output detects that only an upper limit (50) is provided",
         "The output asks the user to confirm or provide the missing lower limit",
         "The output does not generate a full BVA table without user confirmation"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Salary field accepts values from 15000 to 200000 (integer, Thai Baht). Generate BVA test cases with test data I can use immediately.",
+      "expected_output": "A table with columns ID, Name, Description, Input, Expected Output covering boundary values 14999, 15000, 15001, 199999, 200000, 200001 with business-friendly descriptions.",
+      "files": [],
+      "assertions": [
+        "The output includes boundary values 14999, 15000, 15001, 199999, 200000, 200001",
+        "The table has columns: ID, Name, Description, Input, Expected Output",
+        "Each Name clearly states what the test case covers (e.g. below minimum salary, minimum salary boundary)",
+        "Each Description explains in business language what is being tested and what should happen",
+        "The Input column contains concrete numeric values ready to copy-paste",
+        "The Expected Output column clearly indicates whether the system should accept or reject the value"
       ]
     }
   ]

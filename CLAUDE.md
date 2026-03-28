@@ -39,9 +39,26 @@ bomb-skills/
 - **Workspace results**: `grading.json`, `timing.json`, `benchmark.json`, `feedback.json`
 - **Progressive disclosure**: SKILL.md body < 500 lines; split into references/, scripts/, assets/
 
-### Workflow
+### Development Workflow
 
+Every feature follows this TDD cycle. **Always commit after evals pass.**
+
+#### New Skill
 1. Write eval spec in `evals/<skill-name>/evals.json`
 2. Run evals — they should fail/skip (skill not yet implemented)
 3. Implement skill in `skills/<skill-name>/`
-4. Run evals — they should pass
+4. Run evals — they should all pass
+5. **Commit** the eval spec, skill, and any supporting files
+
+#### Adding a Feature to an Existing Skill
+1. Add new eval cases (or update existing assertions) in `evals/<skill-name>/evals.json`
+2. Run evals — new cases should fail, existing cases should still pass
+3. Update `skills/<skill-name>/SKILL.md` (and supporting files) to implement the feature
+4. Run evals — all cases (new and existing) should pass
+5. **Commit** the updated eval spec and skill together
+
+#### Rules
+- Never commit a feature without running evals first
+- Eval results must show all assertions passing before committing
+- Each commit should include both the eval changes and the skill changes for that feature
+- Workspace results (`*-workspace/`) are generated artifacts — do not commit them
