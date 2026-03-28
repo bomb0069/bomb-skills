@@ -2,9 +2,10 @@
 name: test-engineer
 description: >
   Helps business users and technical users analyze requirements and generate test cases
-  using Boundary Value Analysis (BVA) for numeric/time inputs and Equivalence Partitioning (EP)
-  for non-numeric inputs (text, dropdowns, enums). Use when the user asks for test cases,
-  test data, BVA, EP, boundary testing, or wants to verify input validation.
+  using Boundary Value Analysis (BVA) for numeric/time inputs, Equivalence Partitioning (EP)
+  for non-numeric inputs, and State Transition Testing for status/workflow requirements.
+  Use when the user asks for test cases, test data, BVA, EP, state transitions, or wants
+  to verify input validation or workflow behavior.
 license: Apache-2.0
 allowed-tools: AskUserQuestion
 metadata:
@@ -17,6 +18,7 @@ metadata:
 You are a test engineer assistant that generates test cases using:
 - **Boundary Value Analysis (BVA)** for numeric and time inputs
 - **Equivalence Partitioning (EP)** for non-numeric inputs (text, dropdowns, enums, booleans)
+- **State Transition Testing (STT)** for status workflows, approval flows, and state machines
 
 Your goal is to save users time by automatically selecting the right technique per condition and generating structured, ready-to-use test cases.
 
@@ -24,9 +26,10 @@ Your goal is to save users time by automatically selecting the right technique p
 
 Activate when the user:
 - Asks for test cases for a field with a numeric or time range
-- Mentions boundary value analysis, BVA, equivalence partitioning, EP, or boundary testing
+- Mentions boundary value analysis, BVA, equivalence partitioning, EP, state transition, or boundary testing
 - Provides requirements with constraints on inputs (numeric ranges, allowed values, dropdowns)
-- Wants to verify input validation for any type of field
+- Describes a status workflow, approval flow, or state machine (e.g., order status, document lifecycle)
+- Wants to verify input validation or workflow behavior for any type of field
 
 ## Instructions
 
@@ -41,6 +44,7 @@ Read the user's requirement and identify **all conditions** (input fields with c
 List all conditions and assign a technique:
 - **Numeric / time fields** with ranges → use **BVA** (Step 2)
 - **Non-numeric fields** (text, dropdown, enum, boolean, etc.) → use **Equivalence Partitioning** (Step 2b)
+- **Status / workflow / state-based requirements** (e.g., order status, approval workflow) → use **State Transition Testing** (Step 2c)
 - Do NOT apply BVA to text fields by converting to character-length — use EP instead
 
 If the minimum value is greater than the maximum value for any condition, flag it as a likely error.
@@ -200,6 +204,67 @@ EP test cases use the **exact same output format** as BVA:
 
 | ID | Name | Description | Input: {FieldName} | Expected Output |
 |---|---|---|---|---|
+
+### Step 2c: State Transition Testing (STT)
+
+For requirements that describe **status workflows, approval flows, or state machines**, apply State Transition Testing.
+
+**How to identify**: Look for keywords like "status", "workflow", "state", "flow", "lifecycle", "approval", or descriptions of transitions between states (e.g., "order goes from New to Confirmed to Shipped").
+
+**Steps:**
+
+1. **Identify all states** — list every status/state mentioned (e.g., New, Confirmed, Shipped, Delivered, Cancelled)
+
+2. **Identify all valid transitions** — which state-to-state moves are allowed (e.g., New→Confirmed, Confirmed→Shipped)
+
+3. **Identify terminal states** — states with no outgoing transitions (e.g., Delivered, Cancelled)
+
+4. **Draw a state transition diagram** in a code block:
+
+```
+{Workflow name}
+
+                          {action}              {action}
+  [Start] ──────────► [{State A}] ──────────► [{State B}] ──────► [{Terminal}]
+                           │                       │
+                       {action}                    │ (no transition)
+                           ▼                       │
+                      [{State C}] ◄────────────────┘
+                           │                  {action}
+                       (terminal)
+```
+
+For branching paths (e.g., Approved OR Rejected):
+```
+                                    ┌─── Approve ──► [Approved] ──► [Published]
+  [Draft] ──► [Submitted] ──► [Review] ─┤
+                                    └─── Reject ───► [Rejected] ──► [Draft] (cycle)
+```
+
+5. **Build a state transition table** — matrix of Current State × Action → Next State:
+
+| Current State | Action | Next State | Valid? |
+|---|---|---|---|
+| New | Confirm | Confirmed | Valid |
+| New | Cancel | Cancelled | Valid |
+| Confirmed | Ship | Shipped | Valid |
+| Shipped | Confirm | - | Invalid |
+| Delivered | Cancel | - | Invalid |
+
+6. **Generate test cases** for:
+   - **Valid transitions**: one test per valid transition (verify state changes correctly)
+   - **Invalid transitions**: attempt transitions that should NOT be allowed (verify system rejects/errors)
+   - **Happy path**: end-to-end flow from start to terminal state
+   - **Cycles**: if any cycle exists (e.g., Rejected→Draft), test the loop
+
+Test case format — same table but with transition-specific columns:
+
+| ID | Name | Description | Input: Current State | Input: Action | Expected: Next State | Expected Output |
+|---|---|---|---|---|---|---|
+
+- ID prefix: `ST-01`, `ST-02` (for State Transition)
+- Valid transitions → Expected Output: "Valid - state changed to {next}"
+- Invalid transitions → Expected Output: "Invalid - transition not allowed"
 
 ### Step 3: Generate Output
 

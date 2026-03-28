@@ -294,6 +294,30 @@
         "The output includes a combined partition diagram or test scenarios showing department × level combinations with calculated bonus rates",
         "The output shows calculated values for combinations (e.g. Engineering+Manager = 8%)"
       ]
+    },
+    {
+      "id": 28,
+      "prompt": "Order status workflow: New → Confirmed → Shipped → Delivered. Orders can also be Cancelled from New or Confirmed state. Generate test cases.",
+      "expected_output": "A state diagram showing all states and transitions, followed by test cases for valid transitions and invalid transitions.",
+      "files": [],
+      "assertions": [
+        "The output includes a state diagram showing states (New, Confirmed, Shipped, Delivered, Cancelled) and transitions between them",
+        "The output includes test cases for valid transitions (e.g. New→Confirmed, Confirmed→Shipped)",
+        "The output includes test cases for invalid transitions (e.g. Delivered→New, Shipped→Confirmed)",
+        "The test cases use the same table format (ID, Name, Description, Input columns, Expected Output)"
+      ]
+    },
+    {
+      "id": 29,
+      "prompt": "Document approval workflow: Draft → Submitted → Under Review → Approved or Rejected. Rejected documents can go back to Draft. Approved documents can be Published. Generate test cases.",
+      "expected_output": "A state diagram with branching paths, plus test cases covering all valid transitions, invalid transitions, and the cycle (Rejected→Draft→Submitted).",
+      "files": [],
+      "assertions": [
+        "The output includes a state diagram showing all states and transitions including the branch (Approved/Rejected) and cycle (Rejected→Draft)",
+        "The output includes test cases for the happy path (Draft→Submitted→Under Review→Approved→Published)",
+        "The output includes test cases for the rejection cycle (Rejected→Draft→Submitted)",
+        "The output includes test cases for invalid transitions"
+      ]
     }
   ]
 }
