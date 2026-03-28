@@ -83,3 +83,4 @@ Every feature follows this TDD cycle. **Always commit after evals pass.**
 - Each commit should include both the eval changes and the skill changes for that feature
 - Every commit must include the `chats/` folder — always `git add chats/` when staging
 - Workspace results (`*-workspace/`) are generated artifacts — do not commit them
+- Do NOT push to remote automatically — the creator will push manually when ready
