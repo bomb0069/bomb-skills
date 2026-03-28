@@ -17,9 +17,10 @@ Follows the agentskills.io eval format:
 - Outputs: grading.json, timing.json, benchmark.json, feedback.json
 
 Usage:
-    python3 evals/run_evals.py <skill-name>       # Run evals for one skill
-    python3 evals/run_evals.py --all               # Run all evals
-    python3 evals/run_evals.py --list              # List available evals
+    python3 evals/run_evals.py <skill-name>              # Run evals for one skill
+    python3 evals/run_evals.py --all                     # Run all evals
+    python3 evals/run_evals.py --list                    # List available evals
+    python3 evals/run_evals.py <skill-name> --improve    # Suggest SKILL.md improvements from latest iteration
 """
 
 from __future__ import annotations
@@ -417,6 +418,141 @@ def write_benchmark(iteration_dir: Path, eval_results: list, spec: dict, detaile
         json.dump(feedback, f, indent=2)
 
 
+def get_latest_iteration(skill_name: str) -> Path | None:
+    """Find the latest iteration directory for a skill."""
+    workspace_dir = PROJECT_DIR / f"{skill_name}-workspace"
+    if not workspace_dir.exists():
+        return None
+    iterations = sorted(
+        [d for d in workspace_dir.iterdir() if d.is_dir() and d.name.startswith("iteration-")],
+        key=lambda d: int(d.name.split("-")[1]),
+    )
+    return iterations[-1] if iterations else None
+
+
+def improve_skill(skill_name: str):
+    """Read latest iteration results + feedback, ask Claude to suggest SKILL.md improvements."""
+    iteration_dir = get_latest_iteration(skill_name)
+    if not iteration_dir:
+        print(f"Error: No eval results found for '{skill_name}'. Run evals first.")
+        sys.exit(1)
+
+    skill_md_path = SKILLS_DIR / skill_name / "SKILL.md"
+    if not skill_md_path.exists():
+        print(f"Error: No SKILL.md found at {skill_md_path}")
+        sys.exit(1)
+
+    spec = load_eval_spec(skill_name)
+    skill_content = skill_md_path.read_text()
+
+    # Load feedback
+    feedback_path = iteration_dir / "feedback.json"
+    feedback = {}
+    if feedback_path.exists():
+        with open(feedback_path) as f:
+            feedback = json.load(f)
+
+    has_feedback = any(v.strip() for v in feedback.values())
+    if not has_feedback:
+        print(f"Warning: feedback.json in {iteration_dir.name} is empty.")
+        print(f"Edit {feedback_path} to add your review comments, then run --improve again.")
+        print(f"\nExample feedback.json:")
+        print(json.dumps({f"eval-{ev['id']}": "your feedback here or empty string if ok" for ev in spec["evals"]}, indent=2))
+        sys.exit(0)
+
+    # Collect per-eval signals: grading results, actual outputs, feedback
+    eval_signals = []
+    for ev in spec["evals"]:
+        eval_name = f"eval-{ev['id']}"
+        signal = {
+            "eval_id": ev["id"],
+            "prompt": ev["prompt"],
+            "expected_output": ev["expected_output"],
+            "feedback": feedback.get(eval_name, ""),
+        }
+
+        # Load with_skill grading and output
+        with_skill_dir = iteration_dir / eval_name / "with_skill"
+        grading_path = with_skill_dir / "grading.json"
+        output_path = with_skill_dir / "outputs" / "response.txt"
+
+        if grading_path.exists():
+            with open(grading_path) as f:
+                grading = json.load(f)
+            failed = [r for r in grading.get("assertion_results", []) if r.get("passed") is False]
+            signal["failed_assertions"] = failed
+            signal["pass_rate"] = grading.get("summary", {}).get("pass_rate")
+
+        if output_path.exists():
+            signal["actual_output"] = output_path.read_text()
+
+        eval_signals.append(signal)
+
+    # Build the improve prompt
+    signals_text = ""
+    for s in eval_signals:
+        signals_text += f"\n### Eval {s['eval_id']}\n"
+        signals_text += f"**Prompt:** {s['prompt']}\n"
+        signals_text += f"**Expected:** {s['expected_output']}\n"
+        signals_text += f"**Pass rate:** {s.get('pass_rate', 'N/A')}\n"
+
+        if s.get("failed_assertions"):
+            signals_text += "**Failed assertions:**\n"
+            for fa in s["failed_assertions"]:
+                signals_text += f"  - {fa['text']} (evidence: {fa.get('evidence', 'N/A')})\n"
+
+        if s.get("feedback"):
+            signals_text += f"**Human feedback:** {s['feedback']}\n"
+
+        if s.get("actual_output"):
+            # Truncate long outputs
+            output = s["actual_output"]
+            if len(output) > 500:
+                output = output[:500] + "\n... (truncated)"
+            signals_text += f"**Actual output:**\n```\n{output}\n```\n"
+
+    improve_prompt = f"""You are improving an AI agent skill based on eval results and human feedback.
+
+## Current SKILL.md
+```markdown
+{skill_content}
+```
+
+## Eval Results from {iteration_dir.name}
+{signals_text}
+
+## Instructions
+
+Based on the failed assertions and human feedback above, suggest specific improvements to the SKILL.md.
+
+Guidelines:
+- Generalize from feedback — fixes should address underlying issues, not just patch specific test cases
+- Keep the skill lean — fewer, better instructions outperform exhaustive rules
+- Explain the why — reasoning-based instructions work better than rigid directives
+- If all evals pass and feedback is only about quality, focus on clarity and precision
+
+Output the complete improved SKILL.md (with frontmatter). Explain each change briefly before the file."""
+
+    print(f"=== Improving: {skill_name} (based on {iteration_dir.name}) ===")
+    print(f"Sending {len(eval_signals)} eval signals to Claude...")
+
+    result = run_claude(improve_prompt, model=MODEL_EVAL)
+    suggestion = result.get("result", "")
+
+    if not suggestion:
+        print(f"Error: No response from Claude. {result.get('error', '')}")
+        sys.exit(1)
+
+    # Save suggestion to workspace
+    suggestion_path = iteration_dir / "improvement_suggestion.md"
+    with open(suggestion_path, "w") as f:
+        f.write(suggestion)
+
+    print(f"\n{suggestion}")
+    print(f"\n--- Suggestion saved to: {suggestion_path} ---")
+    print(f"Review the suggestion, apply changes to skills/{skill_name}/SKILL.md, then run evals again.")
+
+
 def list_evals():
     """List all available eval specs."""
     eval_dirs = sorted(
@@ -452,10 +588,18 @@ def main():
     parser.add_argument("skill", nargs="?", help="Skill name to evaluate")
     parser.add_argument("--all", action="store_true", help="Run all evals")
     parser.add_argument("--list", action="store_true", help="List available evals")
+    parser.add_argument("--improve", action="store_true", help="Suggest SKILL.md improvements from latest iteration feedback")
     args = parser.parse_args()
 
     if args.list:
         list_evals()
+        return
+
+    if args.improve:
+        if not args.skill:
+            print("Error: --improve requires a skill name")
+            sys.exit(1)
+        improve_skill(args.skill)
         return
 
     if args.all:

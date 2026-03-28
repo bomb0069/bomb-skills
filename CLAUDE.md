@@ -10,13 +10,16 @@ bomb-skills — AI Agent Skills following the [Agent Skills Specification](https
 
 ```bash
 # Run evals for a specific skill
-python evals/run_evals.py <skill-name>
+python3 evals/run_evals.py <skill-name>
 
 # Run all evals
-python evals/run_evals.py --all
+python3 evals/run_evals.py --all
 
 # List available evals
-python evals/run_evals.py --list
+python3 evals/run_evals.py --list
+
+# Suggest SKILL.md improvements from human feedback
+python3 evals/run_evals.py <skill-name> --improve
 ```
 
 ## Architecture
@@ -56,6 +59,13 @@ Every feature follows this TDD cycle. **Always commit after evals pass.**
 3. Update `skills/<skill-name>/SKILL.md` (and supporting files) to implement the feature
 4. Run evals — all cases (new and existing) should pass
 5. **Commit** the updated eval spec and skill together
+
+#### Improving a Skill via Feedback
+1. Run evals: `python3 evals/run_evals.py <skill-name>`
+2. Review outputs in `<skill-name>-workspace/iteration-N/eval-*/with_skill/outputs/`
+3. Edit `<skill-name>-workspace/iteration-N/feedback.json` with specific comments per eval
+4. Run `python3 evals/run_evals.py <skill-name> --improve` to get Claude's suggestions
+5. Apply changes to SKILL.md, run evals, commit
 
 #### Rules
 - Never commit a feature without running evals first
