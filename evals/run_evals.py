@@ -21,6 +21,7 @@ Usage:
     python3 evals/run_evals.py --all                     # Run all evals
     python3 evals/run_evals.py --list                    # List available evals
     python3 evals/run_evals.py <skill-name> --improve    # Suggest SKILL.md improvements from latest iteration
+    python3 evals/run_evals.py <skill-name> --deploy     # Deploy skill to testing folder for manual testing
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ SKILLS_DIR = PROJECT_DIR / "skills"
 
 MODEL_EVAL = "sonnet"
 MODEL_GRADING = "haiku"
+DEPLOY_DIR = PROJECT_DIR.parent / f"deploy-{PROJECT_DIR.name}"
 
 
 def load_eval_spec(skill_name: str) -> dict:
@@ -651,6 +653,46 @@ IMPORTANT:
         print_results(results)
 
 
+def deploy_skill(skill_name: str):
+    """Deploy a skill to the testing folder for manual testing with Claude Code."""
+    import shutil
+
+    skill_src = SKILLS_DIR / skill_name
+    if not skill_src.exists():
+        print(f"Error: Skill '{skill_name}' not found at {skill_src}")
+        sys.exit(1)
+
+    skill_md = skill_src / "SKILL.md"
+    if not skill_md.exists():
+        print(f"Error: No SKILL.md found at {skill_md}")
+        sys.exit(1)
+
+    if not DEPLOY_DIR.exists():
+        print(f"Error: Deploy directory not found at {DEPLOY_DIR}")
+        sys.exit(1)
+
+    # Deploy to .claude/skills/<skill-name>/ for Claude Code discovery
+    deploy_skill_dir = DEPLOY_DIR / ".claude" / "skills" / skill_name
+
+    # Show what will be deployed
+    files = list(skill_src.rglob("*"))
+    files = [f for f in files if f.is_file()]
+    print(f"=== Deploying: {skill_name} ===")
+    print(f"From: {skill_src}")
+    print(f"To:   {deploy_skill_dir}")
+    print(f"Files: {len(files)}")
+    for f in files:
+        print(f"  {f.relative_to(skill_src)}")
+
+    # Clean and copy
+    if deploy_skill_dir.exists():
+        shutil.rmtree(deploy_skill_dir)
+    shutil.copytree(skill_src, deploy_skill_dir)
+
+    print(f"\nDeployed successfully.")
+    print(f"To test: cd {DEPLOY_DIR} and use Claude Code with the skill.")
+
+
 def list_evals():
     """List all available eval specs."""
     eval_dirs = sorted(
@@ -687,10 +729,18 @@ def main():
     parser.add_argument("--all", action="store_true", help="Run all evals")
     parser.add_argument("--list", action="store_true", help="List available evals")
     parser.add_argument("--improve", action="store_true", help="Suggest SKILL.md improvements from latest iteration feedback")
+    parser.add_argument("--deploy", action="store_true", help="Deploy skill to testing folder for manual testing")
     args = parser.parse_args()
 
     if args.list:
         list_evals()
+        return
+
+    if args.deploy:
+        if not args.skill:
+            print("Error: --deploy requires a skill name")
+            sys.exit(1)
+        deploy_skill(args.skill)
         return
 
     if args.improve:

@@ -20,6 +20,9 @@ python3 evals/run_evals.py --list
 
 # Suggest SKILL.md improvements from human feedback
 python3 evals/run_evals.py <skill-name> --improve
+
+# Deploy skill to testing folder for manual testing with Claude Code
+python3 evals/run_evals.py <skill-name> --deploy
 ```
 
 ## Architecture
@@ -66,6 +69,13 @@ Every feature follows this TDD cycle. **Always commit after evals pass.**
 3. Edit `<skill-name>-workspace/iteration-N/feedback.json` with specific comments per eval
 4. Run `python3 evals/run_evals.py <skill-name> --improve` to get Claude's suggestions
 5. Apply changes to SKILL.md, run evals, commit
+
+#### Deploy & Manual Testing
+1. Evals must pass before deploying
+2. Deploy: `python3 evals/run_evals.py <skill-name> --deploy`
+3. Copies skill to `../deploy-<project-folder-name>/.claude/skills/<skill-name>/`
+4. Open Claude Code in the deploy folder to test the skill interactively
+5. After testing, capture any issues as feedback or new eval cases back in this project
 
 #### Rules
 - Never commit a feature without running evals first
