@@ -39,6 +39,31 @@ If the minimum value is greater than the maximum value, flag this as a likely er
 
 If there are multiple input fields, analyze each field separately and organize the output by field.
 
+#### Ambiguous Precision / Minimum Unit
+
+If the requirement does **not** make the minimum unit (precision/step size) clear, do NOT assume a default. Instead, ask the user to clarify before generating test cases. The minimum unit determines the "1 step" used in BVA and directly changes the test data.
+
+**When precision IS clear** — go ahead and generate test cases without asking:
+- The user specifies the format explicitly (e.g., "integer", "2 decimal places", "HH:MM")
+- The user provides boundary values with a visible format (e.g., "09:00 to 17:00" implies HH:MM, "0.01 to 9999.99" implies 2 decimals)
+- The context is unambiguous (e.g., "quantity 1 to 100" is clearly integer)
+
+**When precision IS ambiguous** — ask the user before proceeding:
+- The requirement uses vague wording like "not over 65 years old" (is it age-as-integer or birthdate?)
+- Money amounts without decimal info (e.g., "limit 30,000 baht" — is the step 0.01, 1, or 100?)
+- The data type could reasonably be interpreted multiple ways
+
+When asking:
+1. Identify that the precision is ambiguous.
+2. Show the user **concrete examples** of how different precision choices produce different boundary values.
+3. Ask them to confirm which precision matches their system.
+4. Wait for the user's response before generating test cases.
+
+Common ambiguous cases:
+- **Age**: Is the input a whole number of years (step = 1 year), or a birthdate where age is calculated in years-months-days? If birthdate, the boundary is not "64 years" but "64 years, 11 months, 29 days" — which means the actual input field is a date, not a number.
+- **Money**: Is the minimum unit 0.01 (satang/cents), 1 (whole baht/dollars), or a larger denomination like 100? For a limit of 30,000: step=0.01 gives 29,999.99, step=1 gives 29,999, step=100 gives 29,900.
+- **Percentage**: Is it integer (step=1) or decimal (step=0.01, 0.1)?
+
 #### Single-Bound Requirements
 
 If the requirement specifies **only a lower limit** (e.g., "must be at least 0") or **only an upper limit** (e.g., "cannot exceed 50"), do NOT generate the full BVA table immediately. Instead:
@@ -121,3 +146,46 @@ Column definitions:
 I found a lower limit of **0**, but no upper limit was provided. To generate complete BVA test cases, I need both boundaries.
 
 **Could you confirm the maximum allowed value for the score field?** For example, is it 100, 999, or something else?
+
+## Example: Ambiguous Precision
+
+**User prompt**: "Registration requires users to be not over 65 years old. Create BVA test cases."
+
+**Output**:
+
+**Input Analysis**
+- Field: Age
+- Constraint: not over 65 years old
+- Precision: **unclear — need to clarify**
+
+Before I generate test cases, I need to clarify the **minimum unit of age data** in your system, because it changes the boundary values significantly:
+
+| If the input is... | Step size | Boundary just below 65 | Boundary at 65 | Boundary just above 65 |
+|---|---|---|---|---|
+| Age as whole years (integer) | 1 year | 64 | 65 | 66 |
+| Birthdate (year-month-day) | 1 day | 64 years, 11 months, 29 days | Exactly 65 years | 65 years, 0 months, 1 day |
+
+**How does your system capture age?**
+- Does the user enter their age as a number (e.g., "64")? → I'll use integer step of 1 year.
+- Does the user enter a birthdate and the system calculates age? → I'll use date-based boundaries and the input field is actually a date.
+
+## Example: Ambiguous Money Precision
+
+**User prompt**: "Daily deposit limit is not over 30,000 baht. Generate BVA test cases."
+
+**Output**:
+
+**Input Analysis**
+- Field: Deposit amount
+- Constraint: not over 30,000 baht
+- Precision: **unclear — need to clarify**
+
+Before I generate test cases, I need to clarify the **minimum unit of money** your system accepts:
+
+| If the minimum unit is... | Boundary just below 30,000 | At 30,000 | Just above 30,000 |
+|---|---|---|---|
+| 0.01 (satang) | 29,999.99 | 30,000.00 | 30,000.01 |
+| 1 (whole baht) | 29,999 | 30,000 | 30,001 |
+| 100 (hundred baht) | 29,900 | 30,000 | 30,100 |
+
+**What is the smallest amount a user can deposit?** For example, can they deposit 0.01 baht (satang), or only whole baht, or only multiples of 100?

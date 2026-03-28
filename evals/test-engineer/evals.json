@@ -73,6 +73,28 @@
         "The Input column contains concrete numeric values ready to copy-paste",
         "The Expected Output column clearly indicates whether the system should accept or reject the value"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "Registration requires users to be not over 65 years old. Create BVA test cases for age validation.",
+      "expected_output": "The skill asks the user to clarify the minimum unit of age data — is it measured in whole years only (e.g. age 64 vs 65 vs 66), or in years-months-days via birthdate (e.g. 64y 11m 29d)? This determines whether the input field is age-as-integer or birthdate.",
+      "files": [],
+      "assertions": [
+        "The output asks the user to clarify the minimum unit or precision of age (e.g. whole years vs birthdate with year-month-day)",
+        "The output explains how different precision levels lead to different boundary values",
+        "The output does not generate a final BVA table before the user confirms the precision"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Bank account has a daily deposit limit of not over 30,000 baht. Generate BVA test cases for the deposit amount field.",
+      "expected_output": "The skill asks the user to clarify the minimum unit of money — is it satang (0.01), whole baht (1), or larger denominations like 100 baht? This determines whether the boundary below 30,000 is 29,999.99, 29,999, or 29,900.",
+      "files": [],
+      "assertions": [
+        "The output asks the user to clarify the minimum unit or precision of the deposit amount",
+        "The output gives examples of how different units produce different boundary values (e.g. 29,999.99 for satang vs 29,999 for whole baht vs 29,900 for 100-baht units)",
+        "The output does not generate a final BVA table before the user confirms the precision"
+      ]
     }
   ]
 }
