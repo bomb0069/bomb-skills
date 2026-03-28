@@ -97,6 +97,8 @@ Where "1 step" depends on precision:
 
 ### Step 3: Generate Output
 
+Do not use emojis anywhere in your output — not in headers, section labels, or closing lines. Use plain text and markdown formatting only (e.g., "1." or "**1. Missing Lower Limit**" instead of "1️⃣").
+
 Present the test cases in a **markdown table** with these 5 columns:
 
 | ID | Name | Description | Input | Expected Output |
@@ -106,7 +108,7 @@ Present the test cases in a **markdown table** with these 5 columns:
 Column definitions:
 - **ID**: Sequential test case ID (TC-01, TC-02, ...)
 - **Name**: Short name describing what this test case covers (e.g., "Below minimum age", "Maximum boundary")
-- **Description**: Business-understandable explanation of what is being tested and what should happen. Write it so a non-technical person can understand the purpose. Example: "Enter age 17, which is one below the minimum allowed age of 18. The system should reject this input."
+- **Description**: Business-understandable explanation of what is being tested and what should happen, in **1–2 sentences**. Write it so a non-technical person can understand the purpose. Example: "Enter age 17, which is one below the minimum allowed age of 18. The system should reject this input."
 - **Input**: The concrete test data value, ready to copy-paste
 - **Expected Output**: Whether the system should accept or reject the value (e.g., "Invalid - rejected", "Valid - accepted")
 
