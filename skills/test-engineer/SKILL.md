@@ -91,7 +91,20 @@ If the requirement specifies **only a lower limit** (e.g., "must be at least 0")
 For **each BVA-applicable condition** from Step 1, run the full BVA workflow:
 - Check precision (ambiguous? → ask user via `AskUserQuestion`)
 - Check bounds (single-bound? → ask user for missing bound)
-- If BVA not applicable (text, dropdown, etc.) → skip, note it in output
+- If BVA not applicable (text, dropdown, etc.) → skip, use EP (Step 2b)
+
+**Before generating test cases**, show a **number line diagram** in a code block:
+
+```
+{Field name}: {min} to {max} ({type})
+
+    INVALID        VALID RANGE         INVALID
+  ◄─────────┼─────────────────────┼─────────►
+           {min}                 {max}
+    {min-1} ✗  {min} ✓  {min+1} ✓    {max-1} ✓  {max} ✓  {max+1} ✗
+```
+
+This helps users visualize which values are boundary points and where the valid range lies.
 
 For each identified boundary (min, max), generate these **6 core boundary values**:
 
@@ -112,7 +125,47 @@ Where "1 step" depends on precision:
 
 ### Step 2b: Per-Condition Equivalence Partitioning (EP)
 
-For each **non-numeric condition** from Step 1 (text, dropdown, enum, boolean), apply Equivalence Partitioning:
+For each **non-numeric condition** from Step 1 (text, dropdown, enum, boolean), apply Equivalence Partitioning.
+
+**Before generating test cases**, show a **partition diagram** in a code block:
+
+For a single EP condition:
+```
+{Field name} — Equivalence Partitions
+
+  ┌─────────────────────────────┐
+  │  VALID PARTITIONS           │
+  │  [{value1}] [{value2}] ... │
+  └─────────────────────────────┘
+  ┌─────────────────────────────┐
+  │  INVALID PARTITIONS         │
+  │  [{invalid1}] [{invalid2}] │
+  └─────────────────────────────┘
+```
+
+For **multiple EP conditions that combine** (e.g., department × level), show a **combined partition diagram** with overlap zones showing calculated results:
+```
+Combined Partitions: {Condition A} × {Condition B} → {Result}
+
+┌────────────────────────────────────────────────┐
+│  Universal set                                 │
+│    ┌─ {A1} ──┐   ┌─ {A2} ──┐                  │
+│  ┌─┼─────────┼───┼─────────┼─┐  {B1}          │
+│  │ │ A1+B1   │   │ A2+B1   │ │                │
+│  │ │ {calc}  │   │ {calc}  │ │                │
+│  └─┼─────────┼───┼─────────┼─┘                │
+│  ┌─┼─────────┼───┼─────────┼─┐  {B2}          │
+│  │ │ A1+B2   │   │ A2+B2   │ │                │
+│  │ │ {calc}  │   │ {calc}  │ │                │
+│  └─┼─────────┼───┼─────────┼─┘                │
+│    └─────────┘   └─────────┘                   │
+│  INVALID: [{special cases}]                    │
+└────────────────────────────────────────────────┘
+```
+
+Each overlap zone IS a test case. This makes combinations visually obvious.
+
+Steps:
 
 1. **Identify valid partitions** — each allowed value or class of valid inputs is one partition
    - Dropdown/enum: each option is a partition (e.g., Male, Female, Other)
@@ -200,6 +253,31 @@ After ALL conditions have their per-condition tables (Steps 2-4), combine busine
 4. **Sequential (short-circuit)** — follow the business validation order. If an earlier condition fails, stop — don't test later conditions for that scenario. Mirrors how the system actually validates. Fewest scenarios.
 
 After the user selects a method, generate the Test Scenarios table.
+
+**If user selects sequential**, show a **flowchart diagram** before the table:
+```
+Sequential Validation: {Condition1} → {Condition2} → ...
+
+                ┌──────────┐
+                │  Input   │
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  Check   │──FAIL──► ✗ Rejected
+                │ {Cond1}  │          ({reason})
+                └────┬─────┘
+                   PASS
+                     │
+                ┌────▼─────┐
+                │  Check   │──FAIL──► ✗ Rejected
+                │ {Cond2}  │          ({reason})
+                └────┬─────┘
+                   PASS
+                     │
+                ┌────▼─────┐
+                │ Accepted │
+                └──────────┘
+```
 
 **For single-condition requirements**, skip this step (no combinations needed).
 

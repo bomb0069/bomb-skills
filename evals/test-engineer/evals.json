@@ -258,6 +258,42 @@
         "The Test Scenarios table has a Fails At column showing which step rejected",
         "Invalid file type scenarios show rejection at the type check step"
       ]
+    },
+    {
+      "id": 25,
+      "prompt": "I have a registration form with an age field. The user types their age as a whole number (integer). The valid age range is 18 to 60. Help me create test cases for this field.",
+      "expected_output": "A number line diagram showing BVA boundaries with valid/invalid zones, followed by test case tables.",
+      "files": [],
+      "assertions": [
+        "The output includes a number line diagram showing the valid range with boundary values marked",
+        "The diagram shows valid and invalid zones on the number line"
+      ]
+    },
+    {
+      "id": 26,
+      "prompt": "User registration: gender (dropdown: Male, Female, Other). Generate test cases.",
+      "expected_output": "A partition diagram showing valid and invalid equivalence partitions, followed by test case tables.",
+      "files": [],
+      "assertions": [
+        "The output includes a partition or set diagram showing valid partitions (Male, Female, Other) and invalid partitions",
+        "The diagram uses box drawing or visual grouping to distinguish valid from invalid partitions"
+      ]
+    },
+    {
+      "id": 27,
+      "prompt": "Bonus system: department (Engineering 7%, Finance 6.5%, QA 10%) AND level (Manager +1%, Lead +0.5%, Normal +0%). Generate test cases.",
+      "expected_output": "A combined partition diagram showing department × level overlaps with calculated bonus rates, followed by test scenarios.",
+      "files": [],
+      "turns": [
+        {
+          "respond": "all combinations",
+          "assertions": []
+        }
+      ],
+      "assertions": [
+        "The output includes a combined partition diagram or test scenarios showing department × level combinations with calculated bonus rates",
+        "The output shows calculated values for combinations (e.g. Engineering+Manager = 8%)"
+      ]
     }
   ]
 }
