@@ -17,7 +17,9 @@ Follows the agentskills.io eval format:
 - Outputs: grading.json, timing.json, benchmark.json, feedback.json
 
 Usage:
-    python3 evals/run_evals.py <skill-name>              # Run evals for one skill
+    python3 evals/run_evals.py <skill-name>              # Run skill-only evals (fast, no baseline)
+    python3 evals/run_evals.py <skill-name> --baseline   # Run with baseline comparison
+    python3 evals/run_evals.py <skill-name> --eval 1,2   # Run specific eval IDs only
     python3 evals/run_evals.py --all                     # Run all evals
     python3 evals/run_evals.py --list                    # List available evals
     python3 evals/run_evals.py <skill-name> --improve    # Suggest SKILL.md improvements from latest iteration
@@ -90,15 +92,19 @@ def get_next_iteration(workspace_dir: Path) -> int:
     return max(existing, default=0) + 1
 
 
-def create_workspace_structure(skill_name: str, spec: dict) -> Path:
+def create_workspace_structure(skill_name: str, spec: dict, run_baseline: bool = True) -> Path:
     """Create workspace directory structure for an eval iteration."""
     workspace_dir = PROJECT_DIR / f"{skill_name}-workspace"
     iteration = get_next_iteration(workspace_dir)
     iteration_dir = workspace_dir / f"iteration-{iteration}"
 
+    variants = ["with_skill"]
+    if run_baseline:
+        variants.append("without_skill")
+
     for ev in spec["evals"]:
         eval_name = f"eval-{ev['id']}"
-        for variant in ["with_skill", "without_skill"]:
+        for variant in variants:
             outputs_dir = iteration_dir / eval_name / variant / "outputs"
             outputs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -284,14 +290,18 @@ def run_variant(ev: dict, variant: str, skill_name: str, iteration_dir: Path) ->
     }
 
 
-def run_single_eval(ev: dict, skill_name: str, iteration_dir: Path) -> dict:
-    """Run a single eval — with_skill and without_skill in parallel."""
+def run_single_eval(ev: dict, skill_name: str, iteration_dir: Path, run_baseline: bool = True) -> dict:
+    """Run a single eval — with_skill and optionally without_skill in parallel."""
     eval_result = {"id": ev["id"], "variants": {}}
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    variants = ["with_skill"]
+    if run_baseline:
+        variants.append("without_skill")
+
+    with ThreadPoolExecutor(max_workers=len(variants)) as executor:
         futures = {
             executor.submit(run_variant, ev, variant, skill_name, iteration_dir): variant
-            for variant in ["with_skill", "without_skill"]
+            for variant in variants
         }
         for future in as_completed(futures):
             variant = futures[future]
@@ -300,10 +310,10 @@ def run_single_eval(ev: dict, skill_name: str, iteration_dir: Path) -> dict:
     return eval_result
 
 
-def run_eval(skill_name: str, spec: dict) -> dict:
+def run_eval(skill_name: str, spec: dict, run_baseline: bool = True) -> dict:
     """Run all evaluations for a skill — all evals in parallel."""
     skill_exists = check_skill_exists(skill_name)
-    iteration_dir = create_workspace_structure(skill_name, spec)
+    iteration_dir = create_workspace_structure(skill_name, spec, run_baseline)
 
     results = {
         "skill_name": skill_name,
@@ -347,12 +357,13 @@ def run_eval(skill_name: str, spec: dict) -> dict:
         return results
 
     # Run all evals in parallel
-    print(f"  Running {len(spec['evals'])} evals in parallel...")
+    mode = "with baseline" if run_baseline else "skill-only"
+    print(f"  Running {len(spec['evals'])} evals in parallel ({mode})...")
     all_eval_results = []
 
     with ThreadPoolExecutor(max_workers=len(spec["evals"])) as executor:
         futures = {
-            executor.submit(run_single_eval, ev, skill_name, iteration_dir): ev
+            executor.submit(run_single_eval, ev, skill_name, iteration_dir, run_baseline): ev
             for ev in spec["evals"]
         }
         for future in as_completed(futures):
@@ -364,14 +375,19 @@ def run_eval(skill_name: str, spec: dict) -> dict:
             without_pr = eval_result["variants"].get("without_skill", {}).get("pass_rate")
             status = "passed" if with_pr == 1.0 else "partial" if (with_pr or 0) > 0 else "failed"
 
-            print(f"  Eval {ev['id']}: with_skill={with_pr}, without={without_pr} [{status}]")
+            if run_baseline:
+                print(f"  Eval {ev['id']}: with_skill={with_pr}, without={without_pr} [{status}]")
+            else:
+                print(f"  Eval {ev['id']}: {with_pr} [{status}]")
 
-            results["evals"].append({
+            result_entry = {
                 "id": ev["id"],
                 "status": status,
                 "with_skill_pass_rate": with_pr,
-                "without_skill_pass_rate": without_pr,
-            })
+            }
+            if run_baseline:
+                result_entry["without_skill_pass_rate"] = without_pr
+            results["evals"].append(result_entry)
 
     # Sort results by eval id for consistent output
     results["evals"].sort(key=lambda e: e["id"])
@@ -385,11 +401,18 @@ def write_benchmark(iteration_dir: Path, eval_results: list, spec: dict, detaile
     """Write benchmark.json and feedback.json."""
     if detailed_results:
         with_rates = [r["variants"]["with_skill"]["pass_rate"] or 0 for r in detailed_results]
-        without_rates = [r["variants"]["without_skill"]["pass_rate"] or 0 for r in detailed_results]
         with_times = [r["variants"]["with_skill"]["timing"]["duration_ms"] / 1000 for r in detailed_results]
-        without_times = [r["variants"]["without_skill"]["timing"]["duration_ms"] / 1000 for r in detailed_results]
         with_tokens = [r["variants"]["with_skill"]["timing"]["total_tokens"] for r in detailed_results]
-        without_tokens = [r["variants"]["without_skill"]["timing"]["total_tokens"] for r in detailed_results]
+
+        has_baseline = "without_skill" in detailed_results[0]["variants"]
+        if has_baseline:
+            without_rates = [r["variants"]["without_skill"]["pass_rate"] or 0 for r in detailed_results]
+            without_times = [r["variants"]["without_skill"]["timing"]["duration_ms"] / 1000 for r in detailed_results]
+            without_tokens = [r["variants"]["without_skill"]["timing"]["total_tokens"] for r in detailed_results]
+        else:
+            without_rates = [0] * len(detailed_results)
+            without_times = [0] * len(detailed_results)
+            without_tokens = [0] * len(detailed_results)
 
         n = len(detailed_results)
         benchmark = {
@@ -400,14 +423,14 @@ def write_benchmark(iteration_dir: Path, eval_results: list, spec: dict, detaile
                     "tokens": {"mean": round(sum(with_tokens) / n)},
                 },
                 "without_skill": {
-                    "pass_rate": {"mean": round(sum(without_rates) / n, 2)},
-                    "time_seconds": {"mean": round(sum(without_times) / n, 1)},
-                    "tokens": {"mean": round(sum(without_tokens) / n)},
+                    "pass_rate": {"mean": round(sum(without_rates) / n, 2) if has_baseline else None},
+                    "time_seconds": {"mean": round(sum(without_times) / n, 1) if has_baseline else None},
+                    "tokens": {"mean": round(sum(without_tokens) / n) if has_baseline else None},
                 },
                 "delta": {
-                    "pass_rate": round(sum(with_rates) / n - sum(without_rates) / n, 2),
-                    "time_seconds": round(sum(with_times) / n - sum(without_times) / n, 1),
-                    "tokens": round(sum(with_tokens) / n - sum(without_tokens) / n),
+                    "pass_rate": round(sum(with_rates) / n - sum(without_rates) / n, 2) if has_baseline else None,
+                    "time_seconds": round(sum(with_times) / n - sum(without_times) / n, 1) if has_baseline else None,
+                    "tokens": round(sum(with_tokens) / n - sum(without_tokens) / n) if has_baseline else None,
                 },
             }
         }
@@ -725,7 +748,10 @@ def print_results(results: dict):
     for ev in results["evals"]:
         status_str = f"[eval-{ev['id']}] {ev['status']}"
         if "with_skill_pass_rate" in ev:
-            status_str += f"  (with_skill: {ev['with_skill_pass_rate']}, without: {ev['without_skill_pass_rate']})"
+            if "without_skill_pass_rate" in ev:
+                status_str += f"  (with_skill: {ev['with_skill_pass_rate']}, without: {ev['without_skill_pass_rate']})"
+            else:
+                status_str += f"  (pass_rate: {ev['with_skill_pass_rate']})"
         if "reason" in ev:
             status_str += f"  ({ev['reason']})"
         print(f"  {status_str}")
@@ -738,6 +764,8 @@ def main():
     parser.add_argument("--list", action="store_true", help="List available evals")
     parser.add_argument("--improve", action="store_true", help="Suggest SKILL.md improvements from latest iteration feedback")
     parser.add_argument("--deploy", action="store_true", help="Deploy skill to testing folder for manual testing")
+    parser.add_argument("--baseline", action="store_true", help="Also run without_skill baseline for comparison (skipped by default)")
+    parser.add_argument("--eval", type=str, help="Run specific eval IDs only (comma-separated, e.g. --eval 1,2,3)")
     args = parser.parse_args()
 
     if args.list:
@@ -786,9 +814,17 @@ def main():
             print(f"  - {e}")
         sys.exit(1)
 
+    # Filter to specific eval IDs if requested
+    if args.eval:
+        eval_ids = set(int(x.strip()) for x in args.eval.split(","))
+        spec["evals"] = [ev for ev in spec["evals"] if ev["id"] in eval_ids]
+        if not spec["evals"]:
+            print(f"Error: No evals found with IDs {eval_ids}")
+            sys.exit(1)
+
     print(f"=== Evaluating: {args.skill} ===")
-    print(f"Evals: {len(spec['evals'])}")
-    results = run_eval(args.skill, spec)
+    print(f"Evals: {len(spec['evals'])}" + (f" (IDs: {args.eval})" if args.eval else ""))
+    results = run_eval(args.skill, spec, run_baseline=args.baseline)
     print_results(results)
 
 

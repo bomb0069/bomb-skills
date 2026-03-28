@@ -42,7 +42,7 @@
       "files": [],
       "assertions": [
         "The output detects that only a lower limit (0) is provided",
-        "The output presents interactive choices for the missing upper limit (via AskUserQuestion tool or numbered text choices as fallback)",
+        "The output asks the user to provide the missing upper limit before generating test cases",
         "The output does not generate a full BVA table without user confirmation"
       ]
     },
@@ -84,24 +84,21 @@
     {
       "id": 8,
       "prompt": "Bank account has a daily deposit limit of not over 30,000 baht. Generate BVA test cases for the deposit amount field.",
-      "expected_output": "The skill uses AskUserQuestion tool to ask the user to clarify the minimum unit of money with interactive choices.",
+      "expected_output": "The skill asks the user to clarify money precision before generating test cases.",
       "files": [],
       "assertions": [
-        "The output presents options for money precision including satang (0.01), whole baht (1), and hundred baht (100) for the user to choose from",
-        "The output gives examples of how different units produce different boundary values (e.g. 29,999.99 for satang vs 29,999 for whole baht vs 29,900 for 100-baht units)",
+        "The output asks for clarification or presents choices before generating test cases",
         "The output does not generate a final BVA table before the user confirms the precision"
       ]
     },
     {
       "id": 9,
       "prompt": "Registration form requirements: user must be not over 65 years old, and the registration fee is not over 5,000 baht. Generate BVA test cases.",
-      "expected_output": "The skill detects two fields needing clarification and uses AskUserQuestion tool with multiple questions (tabs) so the user can answer all at once.",
+      "expected_output": "The skill detects two fields needing clarification and asks user to clarify before generating test cases.",
       "files": [],
       "assertions": [
-        "The output identifies two separate fields needing clarification (age and fee)",
-        "The output presents all clarification questions together (via AskUserQuestion tool with multiple tabs, or grouped text choices as fallback), not sequential one-by-one",
-        "Each question has choices for the user to select from (interactive or text-based)",
-        "The output does not generate BVA tables before the user answers all questions"
+        "The output asks for clarification about multiple fields before generating test cases",
+        "The output does not generate BVA tables before the user answers the questions"
       ]
     },
     {
