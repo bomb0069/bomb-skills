@@ -237,6 +237,27 @@
         "The output presents choices for validation order with at least 2 suggested sequences",
         "Each suggested order includes a business reason why that order makes sense"
       ]
+    },
+    {
+      "id": 24,
+      "prompt": "Document upload system: file type (PDF, DOCX, XLSX only) AND file size (1-99 MB, integer, precision 1 MB). Generate test cases.",
+      "expected_output": "Multi-turn: skill generates per-condition tables, asks for combination method, user selects sequential, skill asks for validation order, user picks Type→Size, skill generates sequential test scenarios.",
+      "files": [],
+      "turns": [
+        {
+          "respond": "sequential",
+          "assertions": []
+        },
+        {
+          "respond": "Type first, then Size",
+          "assertions": []
+        }
+      ],
+      "assertions": [
+        "The output includes a Test Scenarios table with sequential/short-circuit method",
+        "The Test Scenarios table has a Fails At column showing which step rejected",
+        "Invalid file type scenarios show rejection at the type check step"
+      ]
     }
   ]
 }

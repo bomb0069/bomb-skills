@@ -111,14 +111,21 @@ def create_workspace_structure(skill_name: str, spec: dict, run_baseline: bool =
     return iteration_dir
 
 
-def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL_EVAL) -> dict:
-    """Run a prompt through Claude Code CLI and return parsed JSON result."""
+def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL_EVAL, resume_session: str | None = None) -> dict:
+    """Run a prompt through Claude Code CLI and return parsed JSON result.
+
+    For multi-turn: pass resume_session to continue an existing conversation.
+    Session ID is returned in the response's 'session_id' field.
+    """
     cmd = [
         "claude", "-p", prompt,
         "--output-format", "json",
-        "--no-session-persistence",
         "--model", model,
     ]
+    if resume_session:
+        cmd.extend(["--resume", resume_session])
+    else:
+        cmd.append("--no-session-persistence")
     if system_prompt:
         cmd.extend(["--system-prompt", system_prompt])
 
@@ -133,7 +140,7 @@ def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL
             return {"error": result.stderr.strip(), "result": "", "duration_ms": 0, "usage": {}}
         return json.loads(result.stdout)
     except subprocess.TimeoutExpired:
-        return {"error": "Timeout after 120s", "result": "", "duration_ms": 120000, "usage": {}}
+        return {"error": "Timeout after 300s", "result": "", "duration_ms": 300000, "usage": {}}
     except json.JSONDecodeError:
         return {"error": "Failed to parse Claude output", "result": result.stdout, "duration_ms": 0, "usage": {}}
 
@@ -222,12 +229,42 @@ Respond in this exact JSON format (no markdown, no code fences):
     return grading
 
 
+def _grade_and_save(output_text: str, assertions: list[str], error: str = "") -> dict:
+    """Grade assertions against output and return grading dict."""
+    if output_text and assertions:
+        return grade_assertions(output_text, assertions)
+    elif not output_text:
+        return {
+            "assertion_results": [
+                {"text": a, "passed": False, "evidence": f"No output: {error}"}
+                for a in assertions
+            ],
+            "summary": {
+                "passed": 0,
+                "failed": len(assertions),
+                "total": len(assertions),
+                "pass_rate": 0.0,
+            },
+        }
+    else:
+        return {
+            "assertion_results": [],
+            "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0},
+        }
+
+
 def run_variant(ev: dict, variant: str, skill_name: str, iteration_dir: Path) -> dict:
-    """Run a single variant (with_skill or without_skill) for one eval."""
+    """Run a single variant (with_skill or without_skill) for one eval.
+
+    Supports both single-turn (prompt only) and multi-turn (prompt + turns array).
+    Multi-turn uses --resume to continue the conversation across turns.
+    """
     eval_name = f"eval-{ev['id']}"
     prompt = ev["prompt"]
     assertions = ev.get("assertions", [])
+    turns = ev.get("turns", [])
     eval_dir = iteration_dir / eval_name / variant
+    is_multi_turn = len(turns) > 0
 
     # Build system prompt
     if variant == "with_skill":
@@ -245,48 +282,125 @@ def run_variant(ev: dict, variant: str, skill_name: str, iteration_dir: Path) ->
     else:
         system_prompt = None
 
-    # Execute prompt via Claude CLI
-    claude_result = run_claude(prompt, system_prompt)
+    # --- Single-turn eval ---
+    if not is_multi_turn:
+        claude_result = run_claude(prompt, system_prompt)
+        output_text = claude_result.get("result", "")
 
-    # Save raw output
+        with open(eval_dir / "outputs" / "response.txt", "w") as f:
+            f.write(output_text)
+
+        timing = extract_timing(claude_result)
+        with open(eval_dir / "timing.json", "w") as f:
+            json.dump(timing, f, indent=2)
+
+        grading = _grade_and_save(output_text, assertions, claude_result.get("error", ""))
+        with open(eval_dir / "grading.json", "w") as f:
+            json.dump(grading, f, indent=2)
+
+        return {
+            "pass_rate": grading.get("summary", {}).get("pass_rate"),
+            "timing": timing,
+        }
+
+    # --- Multi-turn eval ---
+    all_turn_gradings = []
+    total_timing = {"total_tokens": 0, "input_tokens": 0, "output_tokens": 0,
+                    "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0,
+                    "duration_ms": 0, "cost_usd": 0}
+
+    # Turn 1: initial prompt (don't use --no-session-persistence so we get a session_id)
+    claude_result = run_claude(prompt, system_prompt, resume_session=None)
+    # Remove --no-session-persistence for multi-turn: need session to persist
+    # We achieve this by NOT passing resume_session=None but the function already
+    # handles this — when resume_session is None and multi-turn, we need session persistence.
+    # Let's re-run without --no-session-persistence:
+    cmd = [
+        "claude", "-p", prompt,
+        "--output-format", "json",
+        "--model", MODEL_EVAL,
+    ]
+    if system_prompt:
+        cmd.extend(["--system-prompt", system_prompt])
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        claude_result = json.loads(result.stdout) if result.returncode == 0 else {"error": result.stderr, "result": "", "duration_ms": 0, "usage": {}}
+    except (subprocess.TimeoutExpired, json.JSONDecodeError):
+        claude_result = {"error": "Turn 1 failed", "result": "", "duration_ms": 0, "usage": {}}
+
+    session_id = claude_result.get("session_id")
     output_text = claude_result.get("result", "")
-    with open(eval_dir / "outputs" / "response.txt", "w") as f:
+
+    with open(eval_dir / "outputs" / "turn-1.txt", "w") as f:
         f.write(output_text)
 
-    # Write timing
-    timing = extract_timing(claude_result)
-    with open(eval_dir / "timing.json", "w") as f:
-        json.dump(timing, f, indent=2)
+    turn_timing = extract_timing(claude_result)
+    for k in total_timing:
+        total_timing[k] += turn_timing.get(k, 0)
 
-    # Grade assertions
-    if output_text and assertions:
-        grading = grade_assertions(output_text, assertions)
-    elif not output_text:
-        error = claude_result.get("error", "No output")
-        grading = {
-            "assertion_results": [
-                {"text": a, "passed": False, "evidence": f"No output: {error}"}
-                for a in assertions
-            ],
-            "summary": {
-                "passed": 0,
-                "failed": len(assertions),
-                "total": len(assertions),
-                "pass_rate": 0.0,
-            },
-        }
-    else:
-        grading = {
-            "assertion_results": [],
-            "summary": {"passed": 0, "failed": 0, "total": 0, "pass_rate": 0.0},
-        }
+    # Process follow-up turns
+    for turn_idx, turn in enumerate(turns, start=2):
+        respond = turn.get("respond", "")
+        turn_assertions = turn.get("assertions", [])
+
+        if not session_id:
+            # Can't continue without session
+            output_text = ""
+            with open(eval_dir / "outputs" / f"turn-{turn_idx}.txt", "w") as f:
+                f.write(f"ERROR: No session_id from previous turn")
+            if turn_assertions:
+                turn_grading = _grade_and_save("", turn_assertions, "No session to resume")
+                all_turn_gradings.append(turn_grading)
+            continue
+
+        claude_result = run_claude(respond, resume_session=session_id)
+        output_text = claude_result.get("result", "")
+        session_id = claude_result.get("session_id", session_id)  # keep session
+
+        with open(eval_dir / "outputs" / f"turn-{turn_idx}.txt", "w") as f:
+            f.write(output_text)
+
+        turn_timing = extract_timing(claude_result)
+        for k in total_timing:
+            total_timing[k] += turn_timing.get(k, 0)
+
+        # Grade turn-specific assertions
+        if turn_assertions:
+            turn_grading = _grade_and_save(output_text, turn_assertions, claude_result.get("error", ""))
+            all_turn_gradings.append(turn_grading)
+
+    # Grade final top-level assertions against last response
+    if assertions:
+        final_grading = _grade_and_save(output_text, assertions, "")
+        all_turn_gradings.append(final_grading)
+
+    # Merge all turn gradings
+    all_assertion_results = []
+    for g in all_turn_gradings:
+        all_assertion_results.extend(g.get("assertion_results", []))
+
+    total_passed = sum(1 for r in all_assertion_results if r.get("passed") is True)
+    total_failed = sum(1 for r in all_assertion_results if r.get("passed") is False)
+    total_count = len(all_assertion_results)
+
+    merged_grading = {
+        "assertion_results": all_assertion_results,
+        "summary": {
+            "passed": total_passed,
+            "failed": total_failed,
+            "total": total_count,
+            "pass_rate": round(total_passed / total_count, 2) if total_count > 0 else 0.0,
+        },
+    }
 
     with open(eval_dir / "grading.json", "w") as f:
-        json.dump(grading, f, indent=2)
+        json.dump(merged_grading, f, indent=2)
+    with open(eval_dir / "timing.json", "w") as f:
+        json.dump(total_timing, f, indent=2)
 
     return {
-        "pass_rate": grading.get("summary", {}).get("pass_rate"),
-        "timing": timing,
+        "pass_rate": merged_grading["summary"]["pass_rate"],
+        "timing": total_timing,
     }
 
 
