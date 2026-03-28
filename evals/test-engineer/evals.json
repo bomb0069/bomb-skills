@@ -24,12 +24,12 @@
     },
     {
       "id": 3,
-      "prompt": "I have an input field for \"comments\". Help me create BVA test cases.",
-      "expected_output": "The skill recognizes that a free-text field lacks numeric or time boundaries and asks for clarification or suggests alternative techniques.",
+      "prompt": "I have an input field for \"comments\". Help me create test cases.",
+      "expected_output": "The skill recognizes BVA is not applicable and uses Equivalence Partitioning, either generating EP test cases directly or asking about field constraints first.",
       "files": [],
       "assertions": [
-        "The output recognizes that a free-text field is not suitable for BVA",
-        "The output asks for clarification or suggests alternative testing techniques"
+        "The output recognizes that BVA is not applicable for a free-text field and uses or mentions Equivalence Partitioning",
+        "The output either generates EP test cases or asks about field constraints (required/optional, max length, allowed characters) before generating"
       ]
     },
     {
@@ -165,12 +165,35 @@
     {
       "id": 16,
       "prompt": "E-commerce order: customer name (text, required) AND quantity 1-100 (integer) AND total price 1-50000 (2 decimal places, Thai Baht). Generate test cases.",
-      "expected_output": "The skill identifies 3 conditions, skips BVA for the text field (not applicable), applies BVA to quantity and price, generates per-condition tables, then a combined Test Scenarios decision table.",
+      "expected_output": "The skill uses EP for customer name (text field) and BVA for quantity and price. All three conditions get test cases. Combined Test Scenarios table at the end includes all conditions.",
       "files": [],
       "assertions": [
-        "The output notes that the customer name field is not suitable for BVA and skips it",
-        "The output generates BVA test cases for quantity and price conditions",
-        "The output ends with a combined Test Scenarios table for the applicable conditions"
+        "The output uses Equivalence Partitioning for the customer name field (e.g. valid name, empty, special characters, very long name)",
+        "The output uses BVA for quantity and price conditions",
+        "The output ends with a combined Test Scenarios table that includes all three conditions"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "User registration: gender (dropdown: Male, Female, Other) AND status (dropdown: Active, Inactive, Suspended). Generate test cases.",
+      "expected_output": "The skill uses Equivalence Partitioning for both dropdown fields since BVA is not applicable. Each partition value becomes a test case. Combined Test Scenarios at the end.",
+      "files": [],
+      "assertions": [
+        "The output uses Equivalence Partitioning for gender with partitions for each valid value and an invalid partition",
+        "The output uses Equivalence Partitioning for status with partitions for each valid value and an invalid partition",
+        "The output ends with a combined Test Scenarios table combining gender and status values"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Payment form: payment method (credit card, bank transfer, cash on delivery) AND amount 100-50000 (integer, Thai Baht). Generate test cases.",
+      "expected_output": "The skill uses EP for payment method (non-numeric) and BVA for amount (numeric). Both get per-condition test cases with same output format. Combined Test Scenarios at the end.",
+      "files": [],
+      "assertions": [
+        "The output uses Equivalence Partitioning for payment method with valid partitions for each method and an invalid partition",
+        "The output uses BVA for amount with boundary values 99, 100, 101, 49999, 50000, 50001",
+        "The EP test cases use the same table format as BVA (ID, Name, Description, Input: field, Expected Output)",
+        "The output ends with a combined Test Scenarios table"
       ]
     }
   ]
