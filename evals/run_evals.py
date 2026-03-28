@@ -227,6 +227,14 @@ def run_variant(ev: dict, variant: str, skill_name: str, iteration_dir: Path) ->
     if variant == "with_skill":
         skill_md_path = SKILLS_DIR / skill_name / "SKILL.md"
         skill_content = skill_md_path.read_text()
+
+        # Inline references/ files (simulates Claude Code's progressive disclosure)
+        refs_dir = SKILLS_DIR / skill_name / "references"
+        if refs_dir.exists():
+            for ref_file in sorted(refs_dir.iterdir()):
+                if ref_file.is_file():
+                    skill_content += f"\n\n## Reference: {ref_file.name}\n{ref_file.read_text()}"
+
         system_prompt = f"Follow the instructions in this skill:\n\n{skill_content}"
     else:
         system_prompt = None
