@@ -505,6 +505,19 @@
         "Invalid transitions (e.g. Delivered→Confirmed, Cancelled→Shipped) are shown as '-' in the appropriate cells",
         "Terminal states (Delivered, Cancelled) are identifiable as rows where all cells are empty or '-'"
       ]
+    },
+    {
+      "id": 43,
+      "prompt": "Loyalty points system workflow. States: Earned, Active, Redeemed, Expired, Cancelled. Confirmed transitions: Earned→Active (points activated), Active→Redeemed (member redeems), Active→Expired (auto-expire after 1 year), Active→Cancelled (admin cancels). Identify terminal states.",
+      "expected_output": "The skill identifies terminal states from the transition map, then runs a quasi-terminal check using domain knowledge to flag states that may need resurrection paths (e.g. Redeemed→Reversed for fraud, Expired→Restored for system error), and asks the user to confirm whether each apparent terminal is truly final.",
+      "files": [],
+      "assertions": [
+        "The output derives terminal states from the pivot matrix: Redeemed, Expired, and Cancelled are rows with no outgoing transitions",
+        "The output runs a quasi-terminal check and flags at least Redeemed and Expired as states that may have escape paths in exceptional business scenarios",
+        "For Redeemed, the output suggests a possible resurrection path such as reversal due to fraud or transaction rollback",
+        "For Expired, the output suggests a possible resurrection path such as restoration due to system error or fraud investigation",
+        "The output asks the user to confirm whether each flagged quasi-terminal should remain terminal or needs an escape transition added"
+      ]
     }
   ]
 }

@@ -244,6 +244,64 @@ After all `[GAP?]` decisions are made, produce the **final diagram and pivot mat
 
 3. **Identify terminal states** — states with no outgoing transitions (discovered from the confirmed transition map — any state with no outgoing arrow is terminal by definition)
 
+### Terminal State Analysis
+
+#### Step 3a — Derive terminals from the transition map
+
+Scan the final pivot matrix: any row where every cell is empty or `-` is a terminal state.
+
+```
+Derived terminal states:
+
+| State | Reason |
+|---|---|
+| Delivered | No outgoing transitions in confirmed map |
+| Cancelled | No outgoing transitions in confirmed map |
+| Expired | No outgoing transitions in confirmed map |
+```
+
+#### Step 3b — Quasi-terminal check (domain knowledge)
+
+Not all terminal-looking states are truly final in every business scenario. Some states can be "resurrected" in extreme or exceptional cases — edge cases the requirement author may not have considered. Use domain knowledge to flag these.
+
+**Quasi-terminal signals by domain:**
+
+| Domain | Apparent terminal | Possible resurrection | Business trigger |
+|---|---|---|---|
+| Order / Fulfillment | Delivered | → Return / Refund | Fraud, wrong item, damage |
+| Order / Fulfillment | Cancelled | → Reinstated | Customer calls to undo cancel within window |
+| Points / Loyalty | Expired | → Restored | Points expired due to system error or fraud investigation |
+| Points / Loyalty | Redeemed | → Reversed | Redemption was fraudulent or transaction rolled back |
+| Payment | Refunded | → Disputed | Refund itself challenged |
+| User Account | Deactivated | → Reactivated | Account closed by mistake, legal obligation to restore |
+| Document | Archived | → Reinstated | Archived in error, regulation requires reinstatement |
+| Task / Ticket | Closed | → Reopened | Issue resurfaces after closure |
+| Booking | No-show / Expired | → Rescheduled | System error caused missed slot |
+
+#### Proposal format
+
+Present flagged quasi-terminals and ask the user to decide:
+
+```
+🔍 Quasi-Terminal State Review
+
+The following states appear terminal (no outgoing transitions) but may have escape paths
+in exceptional business scenarios. Please confirm whether each is truly final or needs an
+exit transition:
+
+| # | State | Currently terminal | Possible escape | Business scenario | Keep terminal? |
+|---|---|---|---|---|---|
+| 1 | Cancelled | Yes | → Reinstated (New) | Customer calls within 1 hour to undo cancellation — does the business allow this? | ? |
+| 2 | Delivered | Yes | → Returned | Fraud investigation reveals item was not actually delivered or was counterfeit | ? |
+| 3 | Expired | Yes | → Restored | Points expired due to a system bug; operations team needs to restore them manually | ? |
+```
+
+Call `AskUserQuestion` for each flagged state:
+- **Truly terminal** → keep as-is, no outgoing transition
+- **Needs escape path** → add the resurrection transition to the confirmed map (update the pivot matrix and diagram)
+
+After decisions: finalize terminal states list and update the diagram if any escapes were added.
+
 ## State Transition Diagram
 
 The final state diagram and pivot matrix are produced **after Phase 2** (once all `[GAP?]` decisions are resolved). All arrows are solid — no `[?]` or `[GAP?]` labels remain.
