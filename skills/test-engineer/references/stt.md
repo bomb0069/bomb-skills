@@ -62,9 +62,9 @@ Based on [domain] domain knowledge, these states may be implied by the requireme
 Please confirm which of these to include before I build the transition diagram.
 ```
 
-Then call `AskUserQuestion` — present each detected hidden state as a confirm/reject choice, or use multi-select to let the user pick which ones to include. Include a brief business-context suggestion in each option description.
+Then call **one** `AskUserQuestion` with **`multiSelect: true`** — list all detected hidden states as options in a single question. The user selects all they want to include in one response. Include the business reason in each option's description.
 
-After confirmation: add the confirmed hidden states to the full states list and proceed to Step 2.
+After confirmation: add only the selected states to the full states list and proceed to Step 2.
 
 2. **Identify all valid transitions** — which state-to-state moves are allowed
 
@@ -117,7 +117,7 @@ Use the pivot matrix format: **rows = From State**, **columns = To State**, cell
 [?] = domain knowledge suggestion — please confirm whether to include
 ```
 
-Then call `AskUserQuestion` to confirm: present each `[?]` transition and ask the user to approve or remove. Requirement transitions are always included. After confirmation, redraw the diagram with only confirmed transitions (all solid arrows, no `[?]` labels).
+Then call **one** `AskUserQuestion` with **`multiSelect: true`** — list all `[?]` transitions as selectable options in a single question. The user picks which ones to include in one response. Requirement transitions are always included regardless of the answer. After confirmation, redraw the diagram with only confirmed transitions (all solid arrows, no `[?]` labels).
 
 #### Domain Transition Reference
 
@@ -236,11 +236,11 @@ Please decide for each [GAP?]: include (add to scope) or exclude (mark as '-' �
 [GAP?] = common in [domain] domain but not in confirmed scope — include or exclude?
 ```
 
-Call `AskUserQuestion` for each `[GAP?]` entry:
-- **Yes** → add to confirmed transitions (solid arrow in final diagram)
-- **No / out of scope** → replace with `-` (explicitly blocked — generates an invalid transition test case)
+Call **one** `AskUserQuestion` with **`multiSelect: true`** — list all `[GAP?]` transitions as selectable options in a single question:
+- Selected → add to confirmed transitions (solid arrow in final diagram)
+- Not selected → treated as explicitly out of scope — cell becomes `-` (generates an invalid transition test case)
 
-After all `[GAP?]` decisions are made, produce the **final diagram and pivot matrix** with everything resolved — all arrows solid, no `[?]` or `[GAP?]` labels. Then proceed to Step 3.
+After the single response, produce the **final diagram and pivot matrix** with everything resolved — all arrows solid, no `[?]` or `[GAP?]` labels. Then proceed to Step 3.
 
 3. **Identify terminal states** — states with no outgoing transitions (discovered from the confirmed transition map — any state with no outgoing arrow is terminal by definition)
 
@@ -296,11 +296,9 @@ exit transition:
 | 3 | Expired | Yes | → Restored | Points expired due to a system bug; operations team needs to restore them manually | ? |
 ```
 
-Call `AskUserQuestion` for each flagged state:
-- **Truly terminal** → keep as-is, no outgoing transition
-- **Needs escape path** → add the resurrection transition to the confirmed map (update the pivot matrix and diagram)
+Call **one** `AskUserQuestion` with **`multiSelect: true`** — list all flagged quasi-terminal states as selectable options in a single question. Include the business scenario and the proposed escape path in each option description. Selected states get an escape transition added; unselected states remain truly terminal.
 
-After decisions: finalize terminal states list and update the diagram if any escapes were added.
+After the single response: finalize terminal states list and update the diagram if any escapes were added.
 
 ## State Transition Diagram
 
