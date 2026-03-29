@@ -2,9 +2,10 @@
 """
 Eval runner for bomb-skills.
 
-Supports two inference backends (--backend):
-  - claude     : Claude Code CLI (claude -p) — default; requires Claude Code subscription
+Supports three inference backends (--backend):
+  - claude        : Claude Code CLI (claude -p) — default; requires Claude Code subscription
   - github-models : GitHub Models API via gh token — use when Claude quota is exhausted
+  - copilot       : GitHub Copilot CLI (copilot -p) — uses Copilot premium requests
 
 Each eval runs the skill prompt and grades assertions via LLM-as-judge.
 A separate grading call uses a faster/cheaper model.
@@ -24,6 +25,7 @@ Usage:
     python3 evals/run_evals.py <skill-name> --baseline               # Run with baseline comparison
     python3 evals/run_evals.py <skill-name> --eval 1,2               # Run specific eval IDs only
     python3 evals/run_evals.py <skill-name> --backend github-models  # Use GitHub Models API instead of Claude CLI
+    python3 evals/run_evals.py <skill-name> --backend copilot        # Use Copilot CLI (premium requests)
     python3 evals/run_evals.py --all                                 # Run all evals
     python3 evals/run_evals.py --list                                # List available evals
     python3 evals/run_evals.py <skill-name> --improve                # Suggest SKILL.md improvements from latest iteration
@@ -34,6 +36,10 @@ Backend notes:
   github-models  Requires `gh` CLI authenticated (`gh auth login`).
                  Uses gpt-4o for evals and gpt-4o-mini for grading.
                  Sessions stored in /tmp/eval-gh-sessions/ for multi-turn support.
+  copilot        Requires `copilot` CLI installed and logged in (GitHub Copilot subscription).
+                 Uses Copilot premium requests (1 per prompt × model multiplier).
+                 Sessions stored in /tmp/eval-copilot-sessions/ for multi-turn support.
+                 System prompts are prepended to the first user message.
 """
 
 from __future__ import annotations
@@ -70,6 +76,9 @@ _GH_MODEL_MAP = {
     "claude-sonnet-4-5": "gpt-4o",
     "claude-haiku-4-5": "gpt-4o-mini",
 }
+
+# Copilot CLI backend
+_COPILOT_SESSIONS_DIR = Path("/tmp/eval-copilot-sessions")
 
 
 def load_eval_spec(skill_name: str) -> dict:
@@ -140,13 +149,15 @@ def create_workspace_structure(skill_name: str, spec: dict, run_baseline: bool =
 
 
 def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL_EVAL, resume_session: str | None = None) -> dict:
-    """Run a prompt through the configured backend (Claude CLI or GitHub Models).
+    """Run a prompt through the configured backend (Claude CLI, GitHub Models, or Copilot CLI).
 
     For multi-turn: pass resume_session to continue an existing conversation.
     Session ID is returned in the response's 'session_id' field.
     """
     if _BACKEND == "github-models":
         return _run_github_models(prompt, system_prompt=system_prompt, model=model, resume_session=resume_session)
+    if _BACKEND == "copilot":
+        return _run_copilot_cli(prompt, system_prompt=system_prompt, resume_session=resume_session)
     return _run_claude_cli(prompt, system_prompt=system_prompt, model=model, resume_session=resume_session)
 
 
@@ -277,6 +288,52 @@ def _run_github_models(prompt: str, system_prompt: str | None = None, model: str
             "cache_creation_input_tokens": 0,
         },
     }
+
+
+def _run_copilot_cli(prompt: str, system_prompt: str | None = None, resume_session: str | None = None) -> dict:
+    """Run a prompt through the GitHub Copilot CLI (copilot -p).
+
+    Sessions are tracked in /tmp/eval-copilot-sessions/ using UUIDs passed to --resume=<id>.
+    On the first turn, the system_prompt is prepended to the user prompt since copilot CLI
+    has no --system-prompt flag.
+    """
+    _COPILOT_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    session_id = resume_session or str(uuid.uuid4())
+    session_path = _COPILOT_SESSIONS_DIR / f"{session_id}.json"
+
+    # Track whether system prompt has been sent for this session
+    is_first_turn = not session_path.exists()
+    if is_first_turn:
+        session_path.write_text(json.dumps({"system_prompt_sent": True}))
+
+    # Prepend system prompt to first turn (copilot has no --system-prompt flag)
+    full_prompt = prompt
+    if is_first_turn and system_prompt:
+        full_prompt = f"{system_prompt}\n\n---\n\n{prompt}"
+
+    cmd = [
+        "copilot", "-p", full_prompt,
+        "-s",
+        "--no-auto-update",
+        "--no-ask-user",
+        f"--resume={session_id}",
+    ]
+
+    start = time.time()
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        elapsed_ms = int((time.time() - start) * 1000)
+        if result.returncode != 0:
+            return {"error": result.stderr.strip() or result.stdout.strip(), "result": "", "duration_ms": elapsed_ms, "usage": {}, "session_id": session_id}
+        return {
+            "result": result.stdout.strip(),
+            "session_id": session_id,
+            "duration_ms": elapsed_ms,
+            "total_cost_usd": 0,
+            "usage": {"input_tokens": 0, "output_tokens": 0, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0},
+        }
+    except subprocess.TimeoutExpired:
+        return {"error": "Timeout after 300s", "result": "", "duration_ms": 300000, "usage": {}, "session_id": session_id}
 
 
 def extract_timing(claude_result: dict) -> dict:
@@ -445,8 +502,8 @@ def run_variant(ev: dict, variant: str, skill_name: str, iteration_dir: Path) ->
 
     # Turn 1: run initial prompt with session persistence so we get a session_id for follow-up turns.
     # For claude backend: call CLI without --no-session-persistence.
-    # For github-models backend: run_claude() always creates a persistent session automatically.
-    if _BACKEND == "github-models":
+    # For github-models/copilot backends: run_claude() always creates a persistent session automatically.
+    if _BACKEND in ("github-models", "copilot"):
         claude_result = run_claude(prompt, system_prompt, resume_session=None)
     else:
         cmd = [
@@ -1020,9 +1077,9 @@ def main():
     parser.add_argument("--eval", type=str, help="Run specific eval IDs only (comma-separated, e.g. --eval 1,2,3)")
     parser.add_argument(
         "--backend",
-        choices=["claude", "github-models"],
+        choices=["claude", "github-models", "copilot"],
         default="claude",
-        help="Inference backend: 'claude' (default, requires Claude CLI) or 'github-models' (uses gh token + gpt-4o)",
+        help="Inference backend: 'claude' (default, requires Claude CLI), 'github-models' (uses gh token + gpt-4o), or 'copilot' (uses Copilot CLI premium requests)",
     )
     parser.add_argument(
         "--concurrency",
@@ -1037,6 +1094,8 @@ def main():
     _BACKEND = args.backend
     if _BACKEND == "github-models":
         print(f"Backend: GitHub Models (gpt-4o for evals, gpt-4o-mini for grading)")
+    elif _BACKEND == "copilot":
+        print(f"Backend: Copilot CLI (uses Copilot premium requests)")
 
     if args.list:
         list_evals()
