@@ -362,11 +362,23 @@
     {
       "id": 33,
       "prompt": "Insurance premium: base premium 1000-100000 (integer, Thai Baht) AND risk level (Low: -10%, Medium: +0%, High: +20%). Final premium = base × (1 + rate). Final premium must be a valid premium amount (integer, Thai Baht, minimum 500). Generate test cases.",
-      "expected_output": "The skill detects that: (1) combining base premium with risk rates can produce fractional results requiring rounding, and (2) Low risk on minimum base (1000 × 0.9 = 900) is valid but might go below 500 for edge cases — it asks about the rounding rule for fractional results.",
+      "expected_output": "The skill detects that combining base premium with risk rates can produce fractional results requiring rounding, and asks about the rounding rule.",
       "files": [],
       "assertions": [
         "The output detects a requirement gap where the calculated final premium can be fractional",
         "The output asks the user about the missing rounding or adjustment rule for the final premium"
+      ]
+    },
+    {
+      "id": 34,
+      "prompt": "Product pricing: base price 100-50000 (integer, Thai Baht) AND bonus rate (10%, 15%, 20%). New price = base price × (1 + bonus rate). New price must also be a valid product price (integer, Thai Baht, 100-50000). Generate test cases.",
+      "expected_output": "The skill detects a Condition Conflict: base price max is 50000, but new price formula at max base (50000 × 1.20 = 60000) exceeds that same 50000 ceiling. The skill names the conflicting condition ('base price' range 100-50000) and asks the user with business-context-aware suggestions about how to resolve the conflict.",
+      "files": [],
+      "assertions": [
+        "The output detects a condition conflict: the calculated new price (e.g. 60000) violates the same 100-50000 range that applies to base price",
+        "The output names the conflicting condition explicitly (e.g. 'base price condition' or 'product price range 100-50000')",
+        "The output provides business-context-aware suggestions — not just generic options — explaining why each option matters (e.g. separate ceiling for new price, cap at 50000, reject the combination, tiered rate)",
+        "The output asks via AskUserQuestion with a header that names both conflicting fields (e.g. 'Condition Conflict: New Price vs Base Price')"
       ]
     }
   ]
