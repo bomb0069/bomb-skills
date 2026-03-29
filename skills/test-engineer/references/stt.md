@@ -97,20 +97,24 @@ Solid arrows (──►) = from requirement   Dashed arrows (- - ►) = domain k
     └─ - - - - - - - - - - - - - - - - ► [Expired]
 ```
 
-**Step 1b — Show the proposal table** to accompany the diagram:
+**Step 1b — Show the proposal pivot matrix** to accompany the diagram.
+
+Use the pivot matrix format: **rows = From State**, **columns = To State**, cells show the **action/event name** with a source tag:
+- No tag = from the requirement (always included)
+- `[?]` tag = domain knowledge suggestion (pending user confirmation)
 
 ```
-| # | From State | Action / Event | To State | Source |
-|---|---|---|---|---|
-| 1 | New | Customer confirms | Confirmed | Requirement |
-| 2 | Confirmed | Warehouse ships | Shipped | Requirement |
-| 3 | Shipped | Customer receives | Delivered | Requirement |
-| 4 | New | Customer cancels | Cancelled | Requirement |
-| 5 | Confirmed | Customer cancels | Cancelled | Domain knowledge [?] |
-| 6 | Shipped | Customer requests return | Returned | Domain knowledge [?] |
-| 7 | New | Auto-expire (no action within 24h) | Expired | Domain knowledge [?] |
+| From \ To   | Confirmed              | Shipped         | Delivered        | Cancelled                   | Returned                    | Expired                          |
+|-------------|------------------------|-----------------|------------------|-----------------------------|-----------------------------|----------------------------------|
+| New         | Customer confirms      |                 |                  | Customer cancels            |                             | Auto-expire (no action 24h) [?]  |
+| Confirmed   |                        | Warehouse ships |                  | Customer cancels [?]        |                             |                                  |
+| Shipped     |                        |                 | Customer receives |                            | Return request [?]          |                                  |
+| Delivered   |                        |                 |                  |                             |                             |                                  |
+| Cancelled   |                        |                 |                  |                             |                             |                                  |
+| Returned    |                        |                 |                  |                             |                             |                                  |
+| Expired     |                        |                 |                  |                             |                             |                                  |
 
-[?] = suggested — please confirm whether to include
+[?] = domain knowledge suggestion — please confirm whether to include
 ```
 
 Then call `AskUserQuestion` to confirm: present each `[?]` transition and ask the user to approve or remove. Requirement transitions are always included. After confirmation, redraw the diagram with only confirmed transitions (all solid arrows, no `[?]` labels).
@@ -192,22 +196,30 @@ Use this as a starting point when proposing transitions. Add or remove based on 
 
 After the user confirms the transition list in Phase 1, review the transitions that were **not included** from the domain reference above. Present only those that are plausible given the confirmed states — these are potential requirement gaps.
 
+Show the gap check as an **extended pivot matrix** that adds the unconfirmed plausible cells as `[GAP?]` entries on top of the already-confirmed matrix:
+
 ```
 ⚠️ Possible Missing Transitions (Requirement Gap Check)
 
-These transitions are common in [domain] but were not in the confirmed list.
-Please confirm whether each is out of scope, or should be added before development:
+Confirmed transitions are shown normally. [GAP?] cells are common in [domain] but not yet confirmed.
+Please decide: include (add to scope) or exclude (mark out of scope → becomes invalid transition TC).
 
-| # | From | Action | To | Business scenario | Include? |
-|---|---|---|---|---|---|
-| 1 | Delivered | Return within 7 days | Returned | Customer changes mind after receiving order | ? |
-| 2 | Confirmed | Auto-expire if not shipped in 30 days | Expired | Seller fails to fulfill on time | ? |
-| 3 | Payment Failed | Retry payment | Processing | Customer updates payment method after failure | ? |
+| From \ To      | Confirmed | Shipped | Delivered | Cancelled             | Returned                       | Expired                               | Processing               |
+|----------------|-----------|---------|-----------|-----------------------|-------------------------------|---------------------------------------|--------------------------|
+| New            | Customer confirms | |         | Customer cancels      |                               | Auto-expire (24h)                     |                          |
+| Confirmed      |           | Warehouse ships |   | Customer cancels      |                               | Auto-expire if not shipped 30d [GAP?] |                          |
+| Shipped        |           |         | Customer receives |                  | Return request                |                                       |                          |
+| Delivered      |           |         |           | -                     | Return within window [GAP?]   |                                       |                          |
+| Payment Failed |           |         |           | Max retries exceeded [GAP?] |                         |                                       | Retry payment [GAP?]     |
+
+[GAP?] = common in [domain] domain but not in confirmed scope — include or exclude?
 ```
 
-Call `AskUserQuestion` for each unconfirmed plausible transition:
-- If user says **yes** → add to the transition list
-- If user says **no / out of scope** → note as explicitly excluded (document the decision, it can become an invalid transition test case)
+Call `AskUserQuestion` for each `[GAP?]` cell:
+- If user says **yes** → add to the confirmed transition list
+- If user says **no / out of scope** → replace `[GAP?]` with `-` (explicitly invalid — generates an invalid transition test case)
+
+After gap check is complete, produce the **final pivot matrix** with all decisions resolved (no `[?]` or `[GAP?]` labels remain), then proceed to Step 3.
 
 After gap check is complete, proceed to Step 3 with the full confirmed + added transition list.
 
