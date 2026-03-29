@@ -50,21 +50,51 @@ If the user confirms inheritance, Step 2 will detect a Condition Conflict whenev
 
 **All scenarios go in a single table** — do not split by gap type, scenario category, or whether a gap exists.
 
-When a calculated output is present, the Test Scenarios table (from Step 5) always includes two output columns:
+### Formula Decomposition — one column per step
 
-| ID | Name | Description | Input: {A} | Input: {B} | Calculated: {Output} | Expected: {Output} | Result |
-|---|---|---|---|---|---|---|---|
+**Before building the table**, decompose the formula into its atomic steps. Each step becomes its own column using the `Step:` prefix. When rounding is applied at any step, show two adjacent sub-columns: the raw value and the rounded value.
 
-- **`Calculated: {output field name}`** — raw formula result for every row, always shown
-- **`Expected: {output field name}`** — the final value the system must produce; filled in after gap resolution
-  - Before gap resolution: leave as `?` to show it is pending
-  - After user resolves the gap: fill in the adjusted value
-  - For rejected rows: show `—`
+**Decomposition rules:**
+1. Start with all `Input:` columns (one per condition)
+2. For each arithmetic operation in the formula, add a `Step:` column showing the intermediate result
+3. If a rounding or adjustment rule applies to that intermediate result, add a second `Step: Rounded …` column immediately after
+4. End with `Calculated: {output}` (the final raw formula result) and `Expected: {output}` (after any final adjustment)
 
-Compute the output value for each scenario using representative inputs (BVA boundary values, one sample per EP partition).
+**Example — `New Price = Base Price + (Base Price × Bonus Rate)`:**
+
+Formula breakdown:
+- Step A: `Base Price × Bonus Rate` → may be fractional
+- Step B: `Rounded (Base Price × Bonus Rate)` → after rounding the adjustment (if a rounding rule was confirmed)
+- Final: `New Price = Base Price + Rounded Adjustment`
+
+Resulting columns:
+
+| ID | Name | Description | Input: Base Price | Input: Bonus Rate | Step: Base Price × Bonus Rate | Step: Rounded Adjustment | Calculated: New Price | Expected: New Price | Result |
+|---|---|---|---|---|---|---|---|---|---|
+| TS-01 | Normal case | Adjustment 33.3 → rounded up to 34. New price 333+34=367. | 333 | 10% | 33.3 | 34 | 367 | 367 | Valid - accepted |
+| TS-02 | Whole number | Adjustment 30.0, no rounding needed. New price 300+30=330. | 300 | 10% | 30.0 | 30 | 330 | 330 | Valid - accepted |
+| TS-03 | Max base, high rate | Adjustment 10000.0. New price 50000+10000=60000 — conflict. | 50000 | 20% | 10000.0 | 10000 | 60000 | 50000 | Valid - accepted |
+| TS-04 | Invalid base | Below minimum base price. | 99 | 10% | 9.9 | — | — | — | Invalid - rejected |
+
+**Column naming convention:**
+
+| Prefix | When to use | Example |
+|---|---|---|
+| `Input: {field}` | Every input condition | `Input: Base Price` |
+| `Step: {expression}` | Each intermediate arithmetic result | `Step: Base Price × Bonus Rate` |
+| `Step: Rounded {expression}` | Immediately after a `Step:` that gets rounded | `Step: Rounded Adjustment` |
+| `Calculated: {output}` | The raw final formula result (before final adjustment) | `Calculated: New Price` |
+| `Expected: {output}` | The final value the system must produce | `Expected: New Price` |
+
+**Rules:**
+- Always show `Step:` values even when no rounding occurred — testers must be able to verify each arithmetic step independently
+- If the formula has only one operation (e.g., `A × B`), the `Step:` column IS the `Calculated:` column — no need to repeat it
+- For rejected rows where an input is already invalid, show `—` from the first invalid step onward
+- `Expected:` starts as `?` before gap resolution; fill in after the user answers
+
+Compute values using representative inputs (BVA boundary values, one sample per EP partition).
 
 ---
-
 ## Step 2: Detect Gap Types
 
 For each `Calculated:` value in the table, check against the output condition confirmed in Step 0:
@@ -155,14 +185,14 @@ After the user answers, update the **same table** (do not create a new one):
 3. Add a short note in the Description column explaining what was applied (e.g. "ceiling: 366.3 → 367")
 4. Update the `Result` column based on the `Expected` value (not `Calculated`)
 
-**Complete table example after resolution (ceiling rule applied):**
+**Complete table example after resolution (ceiling rule, decomposed formula):**
 
-| ID | Name | Description | Input: Base Price | Input: Bonus Rate | Calculated: New Price | Expected: New Price | Result |
-|---|---|---|---|---|---|---|---|
-| TS-01 | Normal | Base 333, rate 10%. Ceiling: 366.3 → 367. | 333 | 10% | 366.3 | 367 | Valid - accepted |
-| TS-02 | Whole number | Base 300, rate 10%. No rounding needed. | 300 | 10% | 330.0 | 330 | Valid - accepted |
-| TS-03 | Conflict capped | Base 50000, rate 20%. 60000 capped at 50000. | 50000 | 20% | 60000.0 | 50000 | Valid - accepted |
-| TS-04 | Invalid base | Base 99, below min. | 99 | 10% | 108.9 | — | Invalid - rejected |
+| ID | Name | Description | Input: Base Price | Input: Bonus Rate | Step: Base Price × Bonus Rate | Step: Rounded Adjustment | Calculated: New Price | Expected: New Price | Result |
+|---|---|---|---|---|---|---|---|---|---|
+| TS-01 | Normal | Adj 33.3 → ceiling 34. New price 333+34=367. | 333 | 10% | 33.3 | 34 | 367 | 367 | Valid - accepted |
+| TS-02 | Whole number | Adj 30.0, no rounding. New price 300+30=330. | 300 | 10% | 30.0 | 30 | 330 | 330 | Valid - accepted |
+| TS-03 | Conflict capped | Adj 10000.0. 60000 capped at 50000. | 50000 | 20% | 10000.0 | 10000 | 60000 | 50000 | Valid - accepted |
+| TS-04 | Invalid base | Below minimum base price. | 99 | 10% | — | — | — | — | Invalid - rejected |
 
 Rules:
 - **One table only** — all scenarios in one place, including valid, invalid, and gap-affected rows

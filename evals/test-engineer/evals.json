@@ -346,11 +346,13 @@
         {
           "respond": "round up (ceiling)",
           "assertions": [
-            "All scenarios are in ONE unified test scenarios table — not split across multiple tables",
-            "The single table has 'Calculated: New Price' and 'Expected: New Price' columns together with all input columns",
-            "The 'Calculated: New Price' column shows the raw decimal result and 'Expected: New Price' shows the ceiled integer",
-            "The rounding rule is added as a [Hidden] condition in the Input Analysis section",
-            "Rows where no rounding was needed still show both Calculated and Expected columns"
+            "All scenarios are in ONE unified test scenarios table",
+            "The table includes intermediate Step columns decomposing the formula (e.g. 'Step: Base Price × Bonus Rate' and 'Step: Rounded Adjustment')",
+            "The 'Step: Base Price × Bonus Rate' column shows the raw fractional multiplication result (e.g. 33.3 for base 333 rate 10%)",
+            "The 'Step: Rounded Adjustment' column shows the ceiled integer (e.g. 34 for 33.3)",
+            "The 'Calculated: New Price' column shows the final formula result using the rounded adjustment",
+            "The 'Expected: New Price' column shows the final output value",
+            "The rounding rule is added as a [Hidden] condition in the Input Analysis section"
           ]
         }
       ],
