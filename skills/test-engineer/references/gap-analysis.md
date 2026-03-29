@@ -60,11 +60,28 @@ Then ask via `AskUserQuestion`:
 | Range gap (below min) | "Use minimum value — floor at min", "Reject the transaction — result is invalid" |
 | Business format gap | Describe domain-specific options (e.g. round to nearest 100, nearest 10, etc.) |
 
-## Step 4: Add Hidden Condition and Update
+## Step 4: Add Hidden Condition and Update Test Scenarios
 
 After the user responds:
 1. Add the hidden rule as a new condition in the **Input Analysis** section (label it `[Hidden]`)
-2. Update the affected test case rows with corrected expected output values
-3. Add a note explaining the applied rule (e.g. "New price 366.3 → 367 (ceiling)")
+2. **Regenerate the Test Scenarios table** with two output columns to make the gap visible:
+   - `Calculated: {output field name}` — the raw formula result (before the hidden rule)
+   - `Expected: {output field name}` — the adjusted value after applying the hidden rule
+3. Add a short note in the Description column explaining the applied rule
+
+**Table template with before/after columns (example: New Price):**
+
+| ID | Name | Description | Input: Base Price | Input: Bonus Rate | Calculated: New Price | Expected: New Price | Result |
+|---|---|---|---|---|---|---|---|
+| TS-01 | Normal case | Base 333, rate 10%. Raw 366.3 → ceiling 367. | 333 | 10% | 366.3 | 367 | Valid - accepted |
+| TS-02 | Whole number case | Base 300, rate 10%. No rounding needed. | 300 | 10% | 330.0 | 330 | Valid - accepted |
+| TS-03 | Exceeds max | Base 50000, rate 20%. Raw 60000 exceeds max 50000. | 50000 | 20% | 60000.0 | — | Invalid - rejected |
+
+Rules for the two-column output:
+- Always show the **raw calculated value** in `Calculated: {name}` — even when it is already a whole number — so the tester can verify the formula
+- Show the **adjusted value** in `Expected: {name}` — this is what the system must produce
+- When both values are identical (no rounding needed), show them both anyway for consistency
+- When the result is invalid/rejected, show `—` in `Expected: {name}` (no output produced)
+- The `Result` column (Valid/Invalid) is based on the **Expected** value, not the Calculated value
 
 The hidden condition becomes a permanent part of the test suite — future test cases should also respect it.

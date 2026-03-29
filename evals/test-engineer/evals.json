@@ -346,8 +346,10 @@
         {
           "respond": "round up (ceiling)",
           "assertions": [
-            "The output applies the round-up rule to the affected test cases (e.g. new price 366.3 becomes 367)",
-            "The output includes the rounding rule as an added condition in the test scenarios"
+            "The output regenerates the Test Scenarios table with two output columns: 'Calculated: New Price' (raw formula result) and 'Expected: New Price' (adjusted value after ceiling rule)",
+            "The 'Calculated: New Price' column shows the raw decimal result (e.g. 366.3) and the 'Expected: New Price' column shows the ceiled integer (e.g. 367)",
+            "The rounding rule is added as a [Hidden] condition in the Input Analysis section",
+            "Rows where the calculated value is already a whole number still show both columns for consistency"
           ]
         }
       ],
