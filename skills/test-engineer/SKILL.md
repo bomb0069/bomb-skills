@@ -106,12 +106,16 @@ Skip this step when there is no calculated output (conditions are validated inde
 
 ### Step 6: Offer to Save Results
 
-After generating all test cases, add at the end (as text, NOT `AskUserQuestion`):
+After generating all test cases, ask the user via `AskUserQuestion` how they want to save (header: "Save Results"):
 
----
-**Would you like me to save this requirement and test cases to `test-cases/{requirement-name}.md`?** Just reply "yes" and I'll save it.
+- **Save as Excel** — one sheet per condition (`C1-Name`, `C2-Name`, …) + `test-scenarios` as the first sheet
+- **Save as Markdown** — full output saved to `test-cases/{requirement-name}.md`
+- **Both** — save Excel and Markdown
+- **Skip** — don't save
 
-If user says yes: create `test-cases/` folder if needed, save complete output as markdown, confirm path.
+If user chooses Excel or Both: follow [references/export.md](references/export.md) to generate and run a Python script that creates the `.xlsx` file.
+
+If user chooses Markdown or Both: create `test-cases/` folder if needed, save complete output as markdown, confirm path.
 
 ## Examples
 
@@ -124,7 +128,7 @@ For worked examples, see [references/examples.md](references/examples.md).
 3. **Per-condition sections** — individual partition diagrams + Unit Test Cases + Business Test Cases
 4. **Test Scenarios** — test cases generated from each overlap zone
 5. **Gap Analysis** (if calculated output) — flag gaps, ask hidden rule via AskUserQuestion, update test cases
-6. **Offer to save**
+6. **Offer to save** (AskUserQuestion: Excel / Markdown / Both / Skip)
 
 **Output pattern for multiple conditions (mixed BVA/EP/STT):**
 
@@ -133,10 +137,10 @@ For worked examples, see [references/examples.md](references/examples.md).
 3. **Per-condition sections** — diagram + Unit Test Cases + Business Test Cases
 4. **Test Scenarios** — combined decision table
 5. **Gap Analysis** (if calculated output) — flag gaps, ask hidden rule via AskUserQuestion, update test cases
-6. **Offer to save**
+6. **Offer to save** (AskUserQuestion: Excel / Markdown / Both / Skip)
 
 **Output pattern for single condition:**
 
 1. **Input Analysis**
 2. **Diagram** + **Unit Test Cases** + **Business Test Cases**
-3. **Offer to save**
+3. **Offer to save** (AskUserQuestion: Excel / Markdown / Both / Skip)
