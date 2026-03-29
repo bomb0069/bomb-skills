@@ -52,7 +52,7 @@ If min > max for any condition, flag as a likely error.
 
 ### Step 2: Choose Combination Method (if 2+ conditions)
 
-**When all conditions are EP type** (no BVA or STT conditions), skip asking for a combination method — proceed directly with the EP combined partition diagram workflow described in [references/ep.md](references/ep.md) (All-EP Combination Workflow section).
+**When all conditions are EP type** (no BVA or STT conditions), skip asking for a combination method — proceed directly with the EP combined partition diagram workflow described in [references/combination-all.md](references/combination-all.md) (All-EP Combined Partition Diagram section).
 
 **When there are 2+ conditions with mixed techniques** (BVA, EP, STT) and the user has not specified a method, ask via `AskUserQuestion` with header "Scenarios" **before** generating per-condition tables:
 

@@ -180,11 +180,12 @@
     },
     {
       "id": 18,
-      "prompt": "Payment form: payment method (credit card, bank transfer, cash on delivery) AND amount 100-50000 (integer, Thai Baht). Generate test cases.",
-      "expected_output": "A combined Test Scenarios table with payment method and amount columns.",
+      "prompt": "Payment form: payment method (credit card, bank transfer, cash on delivery) AND amount 100-50000 (integer, Thai Baht). Use all combinations. Generate test cases.",
+      "expected_output": "A decision matrix (checkmark table) showing valid/invalid combinations before the detailed test scenarios table.",
       "files": [],
       "assertions": [
-        "The output includes a Test Scenarios table or asks user to choose combination method",
+        "The output includes a decision matrix or checkmark table summarising which conditions are valid/invalid for each scenario",
+        "The output includes a detailed Test Scenarios table with actual input values after the decision matrix",
         "The output addresses both payment method and amount conditions"
       ]
     },
