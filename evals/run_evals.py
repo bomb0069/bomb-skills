@@ -61,11 +61,18 @@ PROJECT_DIR = EVALS_DIR.parent
 SKILLS_DIR = PROJECT_DIR / "skills"
 
 MODEL_EVAL = "sonnet"
-MODEL_GRADING = "sonnet"
+MODEL_GRADING = "haiku"
 DEPLOY_DIR = PROJECT_DIR.parent / f"deploy-{PROJECT_DIR.name}"
 
 # Active backend — set by --backend flag in main()
 _BACKEND = "claude"
+
+# Per-backend default models for eval runs and grading
+_BACKEND_DEFAULTS = {
+    "claude":        {"eval": "sonnet",   "grading": "haiku"},
+    "github-models": {"eval": "gpt-4o",   "grading": "gpt-4o-mini"},
+    "copilot":       {"eval": "sonnet",   "grading": "gpt-4.1"},
+}
 
 # GitHub Models API
 _GH_MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
@@ -87,6 +94,13 @@ _COPILOT_MODEL_MAP = {
     "gpt-4.1": "gpt-4.1",
     "gpt-5-mini": "gpt-5-mini",
     "gpt-4o": "gpt-4o",
+}
+
+# Valid model names per backend (for guard warnings)
+_BACKEND_VALID_MODELS = {
+    "claude":        {"sonnet", "haiku", "claude-sonnet-4-5", "claude-haiku-4-5", "claude-opus-4-5"},
+    "github-models": {"gpt-4o", "gpt-4o-mini", "gpt-4.1"},
+    "copilot":       {"sonnet", "haiku", "gpt-4.1", "gpt-5-mini", "gpt-4o"},
 }
 
 
@@ -216,10 +230,10 @@ def _run_github_models(prompt: str, system_prompt: str | None = None, model: str
     """Run a prompt through the GitHub Models API (OpenAI-compatible endpoint).
 
     Stores conversation history in /tmp/eval-gh-sessions/ for multi-turn support.
-    Model names are mapped: sonnet→gpt-4o, haiku→gpt-4o-mini.
+    Model names are mapped via _GH_MODEL_MAP; unknown names are passed through directly.
     """
     _GH_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
-    gh_model = _GH_MODEL_MAP.get(model, "gpt-4o")
+    gh_model = _GH_MODEL_MAP.get(model, model)  # pass through if not in map
     token = _get_gh_token()
 
     # Load or create session
@@ -398,7 +412,7 @@ Respond in this exact JSON format (no markdown, no code fences):
     result = run_claude(
         grading_prompt,
         system_prompt="You are an eval grader. Output only valid JSON, no markdown fences.",
-        model="haiku",  # Use faster/cheaper model for grading (haiku → gpt-4o-mini for github-models)
+        model=MODEL_GRADING,
     )
 
     response_text = result.get("result", "")
@@ -1100,26 +1114,40 @@ def main():
         type=int,
         default=0,
         metavar="N",
-        help="Max parallel eval runs (default: 0 = all at once). Use 5 to avoid rate limits.",
+        help="Max parallel eval runs (default: 0 = all at once). Use 2 to avoid rate limits.",
     )
     parser.add_argument(
-        "--model",
+        "--eval-model",
         type=str,
         default=None,
         metavar="MODEL",
-        help="Override eval model (e.g. gpt-4.1 for free Copilot included model). Applies to all backends.",
+        help="Override model for eval runs (default: per-backend default). E.g. --eval-model gpt-4.1",
+    )
+    parser.add_argument(
+        "--grading-model",
+        type=str,
+        default=None,
+        metavar="MODEL",
+        help="Override model for grading calls (default: per-backend default). E.g. --grading-model gpt-4o-mini",
     )
     args = parser.parse_args()
 
-    global _BACKEND, MODEL_EVAL
+    global _BACKEND, MODEL_EVAL, MODEL_GRADING
     _BACKEND = args.backend
-    if args.model:
-        MODEL_EVAL = args.model
-    if _BACKEND == "github-models":
-        print(f"Backend: GitHub Models (gpt-4o for evals, gpt-4o-mini for grading)")
-    elif _BACKEND == "copilot":
-        model_display = MODEL_EVAL if args.model else "Claude Sonnet 4.6 (default, 1× premium)"
-        print(f"Backend: Copilot CLI | model: {model_display}")
+
+    # Apply per-backend defaults, then override with explicit flags
+    defaults = _BACKEND_DEFAULTS[_BACKEND]
+    MODEL_EVAL = args.eval_model or defaults["eval"]
+    MODEL_GRADING = args.grading_model or defaults["grading"]
+
+    # Guard: warn if model is not recognised for this backend
+    valid = _BACKEND_VALID_MODELS[_BACKEND]
+    for flag, value in [("--eval-model", MODEL_EVAL), ("--grading-model", MODEL_GRADING)]:
+        if value not in valid:
+            print(f"  Warning: {flag} '{value}' is not in the known model list for '{_BACKEND}' backend.")
+            print(f"  Known models: {', '.join(sorted(valid))}")
+
+    print(f"Backend: {_BACKEND} | eval: {MODEL_EVAL} | grading: {MODEL_GRADING}")
 
     if args.list:
         list_evals()
