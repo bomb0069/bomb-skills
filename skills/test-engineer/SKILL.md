@@ -42,6 +42,8 @@ Read the user's requirement and identify **all conditions**. For each condition,
 - **Input type**: numeric, time, text, dropdown, enum, boolean, or state/workflow
 - **Min/max values** or **allowed values** if applicable
 
+**Before assigning techniques**, check whether any condition's value list is actually bundling multiple orthogonal conditions together (e.g., role-based rates mixed with an eligibility override). If detected, propose splitting them. See [references/condition-split.md](references/condition-split.md) for detection signals, the split proposal format, and worked examples.
+
 Assign a technique to each condition:
 - **Numeric / time fields** with ranges → **BVA** — see [references/bva.md](references/bva.md)
 - **Non-numeric fields** (text, dropdown, enum, boolean) → **EP** — see [references/ep.md](references/ep.md)

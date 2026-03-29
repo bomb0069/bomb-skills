@@ -393,6 +393,40 @@
         "The output performs a Domain Inheritance Check before computing scenarios: detects that New Price shares the same domain as Base Price (Thai Baht price)",
         "The output asks the user whether New Price should inherit the Base Price constraint (100-50000) before generating test cases"
       ]
+    },
+    {
+      "id": 35,
+      "prompt": "การคำนวนการขึ้นเงินเดือนพนักงาน:\n- พนักงานทั่วไป 5%\n- นักพัฒนาระบบ 7%\n- Tester 10%\n- ฝ่ายการเงิน 6.5%\n- พนักงานไม่ได้ขึ้น\n\nGenerate test cases.",
+      "expected_output": "The skill detects hidden sub-conditions: the list bundles Department/Role (General, Developer, Tester, Finance) with Raise Eligibility (Eligible, Not Eligible). It proposes splitting into 2 conditions and asks for confirmation before generating test cases.",
+      "files": [],
+      "turns": [
+        {
+          "respond": "Yes, split into Department/Role and Raise Eligibility",
+          "assertions": [
+            "The output treats the requirement as 2 separate conditions: Department/Role (EP) and Raise Eligibility (EP/Boolean)",
+            "The output generates test cases covering Role × Eligibility combinations (e.g. Developer+Eligible → 7%, Developer+Not Eligible → no raise)",
+            "The output shows that Not Eligible overrides the role-based rate for any department"
+          ]
+        }
+      ],
+      "assertions": [
+        "The output detects hidden sub-conditions: 'พนักงานไม่ได้ขึ้น' (no raise) is not a role/department — it is a cross-cutting eligibility condition",
+        "The output proposes splitting the original list into 2 conditions: Department/Role and Raise Eligibility",
+        "The output explains why the split is needed (no raise applies regardless of department, overrides the rate calculation)",
+        "The output asks the user to confirm the split via AskUserQuestion before generating test cases"
+      ]
+    },
+    {
+      "id": 36,
+      "prompt": "Discount rules:\n- VIP customer: 20% discount\n- Regular customer: 10% discount\n- New customer: 5% discount\n- Product on clearance: additional 5% off\n- No discount applies (full price)\n\nGenerate test cases.",
+      "expected_output": "The skill detects that 'No discount applies' and 'Product on clearance' are not customer types — they are separate orthogonal conditions. It proposes splitting into Customer Type and Discount Override conditions.",
+      "files": [],
+      "assertions": [
+        "The output detects that 'No discount applies' is not a customer type — it is a cross-cutting override condition",
+        "The output detects that 'Product on clearance' is not a customer type — it is a separate product condition",
+        "The output proposes splitting the original list into separate conditions (Customer Type and at least one other condition)",
+        "The output asks the user to confirm the split before generating test cases"
+      ]
     }
   ]
 }
