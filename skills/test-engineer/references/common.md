@@ -38,7 +38,71 @@ For **calculated fields** with direct and indirect inputs:
 | Business test case | BT-01 | Realistic domain values |
 | Test scenario | TS-01 | Combined multi-condition scenarios |
 
-## Business Test Data (Step 4)
+## Test Scenarios Table Format (TS)
+
+The **Test Scenarios** table (TS-01, TS-02, …) combines multiple conditions into cross-condition scenarios. It uses a richer format than the per-condition unit test case table.
+
+### Column Structure
+
+| ID | Scenario Name | Business Scenario | {Condition columns} | Covers | Expected Output |
+|---|---|---|---|---|---|
+
+**Column definitions:**
+
+**ID** — `TS-01`, `TS-02`, … sequential
+
+**Scenario Name** — one short business-readable sentence describing what this combination tests.
+- Write from a business perspective, not a technical one
+- Example: `"Developer employee applies for raise during salary freeze period"`
+- NOT: `"C1=Developer, C2=Not Eligible"`
+
+**Business Scenario** — 2–3 sentences describing the full business process for this row: who is involved, what they do, what data goes in, and what the system should produce.
+- Example: `"A system developer submits a salary review request. HR checks eligibility and finds a current salary freeze. The system blocks the raise and returns the original salary unchanged."`
+
+**Condition columns** — expand each condition into sub-columns so testers can copy values directly into the system under test:
+
+For an **EP condition with an associated business value** (rate, price, discount %, etc.):
+- Sub-column 1: `{Condition name}` — the value to select or enter (the partition)
+- Sub-column 2: `{Parameter name}` — the associated business value linked to that partition
+
+For a **plain EP / BVA condition** (no associated parameter):
+- Single column: `{Condition name} ({key constraint})` — the value to enter
+
+Use a **business-readable header** that is self-explanatory without reading the full analysis:
+- `Employee Department` not `Input: Department`
+- `Raise Rate (%)` not `Input: Raise Rate`
+- `File Type (PDF/DOCX/XLSX only)` not `Input: File Type`
+- `Order Quantity (1–100 units)` not `Input: Quantity`
+
+**Covers** — condition test case IDs that combine to form this scenario, format `CX-TCxx`:
+- `C1` = Condition 1 (from the C1/C2/C3 IDs assigned in Step 1)
+- `TC02` = test case 02 from that condition's unit test case table
+- List all conditions: `C1-TC03 + C2-TC01 + C3-TC02`
+
+**Expected Output** — write as a business outcome sentence:
+- Include what actually happens in the system
+- Examples:
+  - `"Raise applied — salary increases by 7%"` not `"Valid - accepted"`
+  - `"Upload rejected — invalid file type, user sees error message"` not `"Invalid - rejected"`
+  - `"Order confirmed — quantity 50 within allowed range"` not `"Valid - accepted"`
+
+### Example
+
+Conditions from Step 1:
+- **C1**: Employee Department (EP) — General 5%, System Developer 7%, Tester 10%, Finance 6.5%
+- **C2**: Raise Eligibility (EP) — Eligible, Not Eligible
+
+C1 has an associated business value (raise rate %) → split into two sub-columns.
+C2 is a plain EP condition (no associated parameter) → single column.
+
+| ID | Scenario Name | Business Scenario | Employee Department | Raise Rate (%) | Raise Eligibility | Covers | Expected Output |
+|---|---|---|---|---|---|---|---|
+| TS-01 | Developer receives standard raise | A system developer submits for annual review. HR confirms eligibility. System applies the 7% raise rate to current salary. | System Developer | 7% | Eligible | C1-TC02 + C2-TC01 | Raise applied — salary increases by 7% |
+| TS-02 | Developer frozen — raise blocked | A system developer submits for review but is on salary freeze. The system blocks the raise regardless of the role's rate. | System Developer | 7% | Not Eligible | C1-TC02 + C2-TC02 | No raise — salary unchanged, freeze reason shown |
+| TS-03 | Tester receives highest raise | A QA tester eligible for the highest standard raise rate of 10% submits for annual review. System applies full rate. | Tester | 10% | Eligible | C1-TC03 + C2-TC01 | Raise applied — salary increases by 10% |
+| TS-04 | Finance staff frozen | A finance department employee on salary freeze submits for review. System blocks the raise. | Finance | 6.5% | Not Eligible | C1-TC04 + C2-TC02 | No raise — salary unchanged |
+
+
 
 For each condition, generate **Business Test Cases** alongside unit test cases.
 

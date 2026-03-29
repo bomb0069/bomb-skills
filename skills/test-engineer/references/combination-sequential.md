@@ -34,6 +34,7 @@ Sequential Validation: {Condition1} → {Condition2} → ...
 - For valid condition 1 × invalid condition 2: ONE scenario per invalid value (passes step 1, fails at step 2, **all remaining conditions use nominal**)
 - Continue until all conditions pass (happy path)
 - Add "Fails At" column to show which step rejected
+- Follow the **Test Scenarios Table Format** in [references/common.md](common.md): business-readable column headers, condition sub-columns split into select value + parameter, Business Scenario narrative, and Covers traceability column
 - Label: **"Test Scenarios (sequential — for acceptance/integration testing)"**
 
 **Example (File Type → File Size):** For "invalid file type" scenarios, always use the nominal file size (e.g. 50 MB). Do NOT also use an invalid size — only one field fails per scenario.

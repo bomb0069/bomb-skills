@@ -38,6 +38,7 @@ Activate when the user:
 ### Step 1: Analyze the Requirement — Count Conditions
 
 Read the user's requirement and identify **all conditions**. For each condition, identify:
+- **Condition ID**: assign sequentially — C1, C2, C3, … (used for traceability in Test Scenarios)
 - **Field name**
 - **Input type**: numeric, time, text, dropdown, enum, boolean, or state/workflow
 - **Min/max values** or **allowed values** if applicable

@@ -48,7 +48,6 @@ Then generate the full test scenarios table with actual input values for each ro
 
 ## Rules
 - ID prefix: `TS-01`, `TS-02`
-- Table has `Input:` columns for ALL applicable conditions
+- Follow the **Test Scenarios Table Format** in [references/common.md](common.md): business-readable column headers, condition sub-columns split into select value + parameter, Business Scenario narrative, and Covers traceability column
 - Combine ALL business test data including **both valid and invalid values** — some pass, some fail
 - Label: **"Test Scenarios (all combinations — for acceptance/integration testing)"**
-- Description: explain business meaning and why it passes or fails
