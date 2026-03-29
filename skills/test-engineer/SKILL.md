@@ -57,12 +57,17 @@ If min > max for any condition, flag as a likely error.
 
 **When all conditions are EP type** (no BVA or STT conditions), skip asking for a combination method — proceed directly with the EP combined partition diagram workflow described in [references/combination-all.md](references/combination-all.md) (All-EP Combined Partition Diagram section).
 
+**When any condition is STT type** (status, workflow, or state machine), offer **State Transition Testing** as the primary combination method choice alongside the standard options. See [references/combination-stt.md](references/combination-stt.md).
+
 **When there are 2+ conditions with mixed techniques** (BVA, EP, STT) and the user has not specified a method, ask via `AskUserQuestion` with header "Scenarios" **before** generating per-condition tables:
 
-1. **All combinations** — see [references/combination-all.md](references/combination-all.md)
-2. **Pairwise** — see [references/combination-pairwise.md](references/combination-pairwise.md)
-3. **Business-driven** — see [references/combination-business.md](references/combination-business.md)
-4. **Sequential (short-circuit)** — see [references/combination-sequential.md](references/combination-sequential.md)
+1. **State Transition Testing** *(available when any condition is state/workflow type)* — see [references/combination-stt.md](references/combination-stt.md)
+2. **All combinations** — see [references/combination-all.md](references/combination-all.md)
+3. **Pairwise** — see [references/combination-pairwise.md](references/combination-pairwise.md)
+4. **Business-driven** — see [references/combination-business.md](references/combination-business.md)
+5. **Sequential (short-circuit)** — see [references/combination-sequential.md](references/combination-sequential.md)
+
+If no STT condition is present, omit option 1 from the list.
 
 If the user already specified a method in their prompt (e.g. "use sequential"), skip this step and proceed directly.
 

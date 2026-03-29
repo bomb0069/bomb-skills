@@ -533,6 +533,31 @@
         "The SJ scenarios cover all terminal states: Redeemed, Expired, and Cancelled each appear as final states in at least one journey",
         "The SJ scenarios cover the fraud reversal path: Redeemed→Active→Cancelled appears in at least one journey"
       ]
+    },
+    {
+      "id": 45,
+      "prompt": "Subscription service: Status (Trial, Active, Paused, Cancelled, Expired) AND Plan Type (Monthly, Annual). Generate test cases.",
+      "expected_output": "Because one condition is a state/workflow type (Status), the skill offers State Transition Testing as the first option in the combination method question, alongside the standard 4 methods.",
+      "files": [],
+      "assertions": [
+        "The output identifies Status as a state/workflow condition (STT) and Plan Type as an EP condition",
+        "The output offers State Transition Testing as one of the combination method choices in the AskUserQuestion prompt",
+        "State Transition Testing appears as the first or prominently highlighted option because a state/workflow condition was detected",
+        "The standard combination methods (all combinations, pairwise, business-driven, sequential) are also offered as alternatives"
+      ]
+    },
+    {
+      "id": 46,
+      "prompt": "Subscription service: Status (Trial, Active, Paused, Cancelled, Expired) AND Plan Type (Monthly, Annual). Use State Transition Testing.",
+      "expected_output": "Full STT workflow applied with Plan Type (EP) woven into transitions and journeys. Level 1 ST-xx transition test cases include Plan Type combinations where Plan Type gates a transition. Level 2 SJ-xx journey scenarios include an Input Conditions column showing Plan Type values at each journey step.",
+      "files": [],
+      "assertions": [
+        "The output runs the full STT workflow: hidden state analysis, transition identification with gap check, terminal state quasi-terminal check",
+        "Level 1 ST-xx transition test cases are generated for each valid and invalid transition",
+        "Where Plan Type (EP) affects a transition, EP partition values are combined with the state transition test cases",
+        "Level 2 SJ-xx State Journey Scenarios are generated covering all terminal states (Cancelled, Expired)",
+        "The SJ table includes an Input Conditions column (or equivalent) showing Plan Type values relevant to each journey step"
+      ]
     }
   ]
 }
