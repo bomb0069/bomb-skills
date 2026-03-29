@@ -196,38 +196,57 @@ Use this as a starting point when proposing transitions. Add or remove based on 
 
 After the user confirms the transition list in Phase 1, review the transitions that were **not included** from the domain reference above. Present only those that are plausible given the confirmed states — these are potential requirement gaps.
 
-Show the gap check as an **extended pivot matrix** that adds the unconfirmed plausible cells as `[GAP?]` entries on top of the already-confirmed matrix:
+Show **both a diagram and a pivot matrix** — same pattern as Phase 1.
+
+**Step 2a — Gap diagram**: start from the confirmed diagram (all solid arrows from Phase 1) and overlay `[GAP?]` dashed arrows for each plausible missing transition:
 
 ```
 ⚠️ Possible Missing Transitions (Requirement Gap Check)
 
-Confirmed transitions are shown normally. [GAP?] cells are common in [domain] but not yet confirmed.
-Please decide: include (add to scope) or exclude (mark out of scope → becomes invalid transition TC).
+Solid arrows (──►) = confirmed   Dashed arrows (- - ►) with [GAP?] = may be missing from requirement
 
-| From \ To      | Confirmed | Shipped | Delivered | Cancelled             | Returned                       | Expired                               | Processing               |
-|----------------|-----------|---------|-----------|-----------------------|-------------------------------|---------------------------------------|--------------------------|
-| New            | Customer confirms | |         | Customer cancels      |                               | Auto-expire (24h)                     |                          |
-| Confirmed      |           | Warehouse ships |   | Customer cancels      |                               | Auto-expire if not shipped 30d [GAP?] |                          |
-| Shipped        |           |         | Customer receives |                  | Return request                |                                       |                          |
-| Delivered      |           |         |           | -                     | Return within window [GAP?]   |                                       |                          |
-| Payment Failed |           |         |           | Max retries exceeded [GAP?] |                         |                                       | Retry payment [GAP?]     |
+                    customer confirms          warehouse ships           customer receives
+  [New] ──────────────────────────► [Confirmed] ────────────► [Shipped] ──────────────► [Delivered]
+    │                                    │                        │                           │
+    │ customer cancels                   │ customer cancels        │ return request             │ return within window [GAP?]
+    ▼                                    ▼                        ▼                           ▼
+[Cancelled]                         [Cancelled]              [Returned] ◄─ - - - - - - - [Delivered]
+                                         │
+    [New] - - - - - - - - - - - - - - - -│- - - - ► [Expired]  auto-expire if not shipped 30d [GAP?]
+                                         └─ - - - - ► [Expired]
+
+[Payment Failed] - - - - - - - - - - - - - - - - ► [Processing]  retry payment [GAP?]
+[Payment Failed] - - - - - - - - - - - - - - - - ► [Cancelled]   max retries exceeded [GAP?]
+```
+
+**Step 2b — Gap pivot matrix**: show the confirmed matrix with `[GAP?]` cells overlaid:
+
+```
+Confirmed transitions are shown normally. [GAP?] cells are common in [domain] but not yet confirmed.
+Please decide for each [GAP?]: include (add to scope) or exclude (mark as '-' → invalid transition TC).
+
+| From \ To      | Confirmed | Shipped         | Delivered         | Cancelled                   | Returned                      | Expired                               | Processing           |
+|----------------|-----------|-----------------|-------------------|-----------------------------|-------------------------------|---------------------------------------|----------------------|
+| New            | Customer confirms |           |                   | Customer cancels            |                               | Auto-expire (24h)                     |                      |
+| Confirmed      |           | Warehouse ships |                   | Customer cancels            |                               | Auto-expire if not shipped 30d [GAP?] |                      |
+| Shipped        |           |                 | Customer receives |                             | Return request                |                                       |                      |
+| Delivered      |           |                 |                   | -                           | Return within window [GAP?]   |                                       |                      |
+| Payment Failed |           |                 |                   | Max retries exceeded [GAP?] |                               |                                       | Retry payment [GAP?] |
 
 [GAP?] = common in [domain] domain but not in confirmed scope — include or exclude?
 ```
 
-Call `AskUserQuestion` for each `[GAP?]` cell:
-- If user says **yes** → add to the confirmed transition list
-- If user says **no / out of scope** → replace `[GAP?]` with `-` (explicitly invalid — generates an invalid transition test case)
+Call `AskUserQuestion` for each `[GAP?]` entry:
+- **Yes** → add to confirmed transitions (solid arrow in final diagram)
+- **No / out of scope** → replace with `-` (explicitly blocked — generates an invalid transition test case)
 
-After gap check is complete, produce the **final pivot matrix** with all decisions resolved (no `[?]` or `[GAP?]` labels remain), then proceed to Step 3.
-
-After gap check is complete, proceed to Step 3 with the full confirmed + added transition list.
+After all `[GAP?]` decisions are made, produce the **final diagram and pivot matrix** with everything resolved — all arrows solid, no `[?]` or `[GAP?]` labels. Then proceed to Step 3.
 
 3. **Identify terminal states** — states with no outgoing transitions (discovered from the confirmed transition map — any state with no outgoing arrow is terminal by definition)
 
 ## State Transition Diagram
 
-The final state diagram is produced at the end of Phase 1 (after user confirms all transitions). All arrows are solid at that point — no `[?]` labels remain.
+The final state diagram and pivot matrix are produced **after Phase 2** (once all `[GAP?]` decisions are resolved). All arrows are solid — no `[?]` or `[GAP?]` labels remain.
 
 Draw the diagram in a code block using the format below. Show the action/event label on every arrow.
 
