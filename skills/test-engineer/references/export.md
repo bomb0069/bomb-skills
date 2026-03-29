@@ -6,7 +6,7 @@ When the user confirms they want to save to Excel, generate and run a Python scr
 
 | Sheet order | Sheet name | Content |
 |---|---|---|
-| 1 | `test-scenarios` | Combined Test Scenarios table (TS-xx or SJ-xx) |
+| 1 | `test-scenarios` | **Condition Summary** (top) + Combined Test Scenarios table (TS-xx or SJ-xx) |
 | 2+ | `{CX}-{ConditionName}` | Unit Test Cases (TC-xx or ST-xx) + Business Test Cases (BT-xx) for that condition |
 
 **Sheet naming rules:**
@@ -14,6 +14,20 @@ When the user confirms they want to save to Excel, generate and run a Python scr
 - Condition sheets named as `C1-Department`, `C2-Eligibility`, `C3-FileSize` — condition ID + short condition name
 - Max 31 characters per sheet name (Excel limit) — truncate condition name if needed
 - Replace spaces with `-`, strip special characters
+
+### Condition Summary Section (top of `test-scenarios` sheet)
+
+Before the scenarios table, output a condition summary block:
+
+| Column | Content |
+|---|---|
+| ID | `C1`, `C2`, `C3`… |
+| Condition Name | Full condition name |
+| Type | `EP`, `BVA`, `STT`, `Business Rule`, etc. |
+| Partitions / Values | All valid + invalid partitions or boundary points (comma-separated) |
+| Test Technique | Which technique was applied (`Equivalence Partitioning`, `Boundary Value Analysis`, `State Transition Testing`) |
+
+After the condition summary rows, leave **one blank row**, then a bold label row `"Test Scenarios"`, then the scenarios table headers and rows.
 
 ## How to Generate
 
@@ -76,9 +90,44 @@ def style_sheet(ws, headers, rows):
         ws.column_dimensions[col_letter].width = max_len + 4
     ws.row_dimensions[1].height = 30
 
-# ── Sheet 1: Test Scenarios ──────────────────────────────────────────────────
+# ── Sheet 1: test-scenarios ───────────────────────────────────────────────────
 ws_ts = wb.active
 ws_ts.title = "test-scenarios"
+
+SECTION_FONT  = Font(bold=True, size=12)
+SUMMARY_FILL  = PatternFill("solid", fgColor="1F4E79")   # dark blue for summary header
+SUMMARY_FONT  = Font(bold=True, color="FFFFFF", size=11)
+
+# ── Part A: Condition Summary ────────────────────────────────────────────────
+ws_ts.append(["Condition Summary"])
+ws_ts[ws_ts.max_row][0].font = SECTION_FONT
+
+summary_headers = ["ID", "Condition Name", "Type", "Partitions / Values", "Test Technique"]
+ws_ts.append(summary_headers)
+for cell in ws_ts[ws_ts.max_row]:
+    cell.font      = SUMMARY_FONT
+    cell.fill      = SUMMARY_FILL
+    cell.border    = BORDER
+    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+summary_rows = [
+    # ["C1", "Department", "EP", "General, System Developer, IT Support, Finance, HR, Other", "Equivalence Partitioning"],
+    # ["C2", "Performance Rating", "EP", "Outstanding (1), Good (2), Average (3), Below Average (4)", "Equivalence Partitioning"],
+]
+
+for i, row in enumerate(summary_rows, start=1):
+    ws_ts.append(row)
+    fill = ALT_FILL if i % 2 == 0 else PatternFill()
+    for cell in ws_ts[ws_ts.max_row]:
+        cell.fill      = fill
+        cell.border    = BORDER
+        cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+ws_ts.append([])  # blank separator
+
+# ── Part B: Test Scenarios ────────────────────────────────────────────────────
+ws_ts.append(["Test Scenarios"])
+ws_ts[ws_ts.max_row][0].font = SECTION_FONT
 
 ts_headers = ["ID", "Scenario Name", "Business Scenario",
               # {condition columns — expand as needed}
@@ -89,7 +138,32 @@ ts_rows = [
     # ["TS-01", "scenario name", "business story...", "value", "value", "value", "C1-BT01+C2-BT01", "outcome..."],
 ]
 
-style_sheet(ws_ts, ts_headers, ts_rows)
+# Write ts headers
+ws_ts.append(ts_headers)
+for cell in ws_ts[ws_ts.max_row]:
+    cell.font      = HEADER_FONT
+    cell.fill      = HEADER_FILL
+    cell.border    = BORDER
+    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+for i, row in enumerate(ts_rows, start=2):
+    ws_ts.append(row)
+    fill = ALT_FILL if i % 2 == 0 else PatternFill()
+    for cell in ws_ts[ws_ts.max_row]:
+        cell.fill      = fill
+        cell.border    = BORDER
+        cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+# Auto-fit all columns in test-scenarios sheet
+all_headers = summary_headers + ts_headers
+for col_idx in range(1, max(len(summary_headers), len(ts_headers)) + 1):
+    col_letter = get_column_letter(col_idx)
+    max_len = 10
+    for row in ws_ts.iter_rows(min_col=col_idx, max_col=col_idx):
+        for cell in row:
+            if cell.value:
+                max_len = max(max_len, min(len(str(cell.value)), 60))
+    ws_ts.column_dimensions[col_letter].width = max_len + 4
 
 # ── Condition sheets ─────────────────────────────────────────────────────────
 # One sheet per condition. Each sheet has two sections:
@@ -171,6 +245,7 @@ print(f"Saved: {output_path}")
 
 When generating the actual script:
 - Replace `{requirement-name}` with a slugified version of the requirement name (lowercase, hyphens, no spaces)
+- Fill in `summary_rows` with one row per condition: ID, name, type, all partitions/values joined by `, `, technique name
 - Fill in the actual column headers and row data from the generated test cases
 - For STT: `test-scenarios` sheet contains SJ-xx journeys; condition sheets contain ST-xx transition test cases + BT-xx
 - Add one `write_condition_sheet(...)` call per condition (C1, C2, C3…)
