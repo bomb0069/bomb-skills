@@ -431,13 +431,15 @@
     {
       "id": 37,
       "prompt": "Salary raise system: Employee Department (General 5%, System Developer 7%, Tester 10%, Finance 6.5%) AND Raise Eligibility (Eligible, Not Eligible). Generate test cases.",
-      "expected_output": "Test Scenarios table with: business-readable column headers, Department split into 'Employee Department' and 'Raise Rate (%)' sub-columns, a Business Scenario narrative column, a Covers column showing C1-TCxx + C2-TCxx traceability, and business-outcome Expected Output column.",
+      "expected_output": "Test Scenarios table with: business-readable column headers, Department split into 'Employee Department' and 'Raise Rate (%)' sub-columns, a Business Scenario narrative column, a Covers column showing C1-BTxx + C2-BTxx traceability, and business-outcome Expected Output column.",
       "files": [],
       "assertions": [
         "The output assigns condition IDs (C1, C2) to conditions in the Input Analysis section",
         "The Test Scenarios table uses business-readable column headers (not 'Input: Department' but something like 'Employee Department')",
         "The Department condition is split into two sub-columns: one for the department name (select value) and one for the raise rate percentage (associated parameter)",
-        "Each Test Scenarios row includes a Covers column listing the condition-test-case IDs that combine to form it (e.g. C1-TC02 + C2-TC01)",
+        "Each Test Scenarios row includes a Covers column listing the business test case IDs that combine to form it (e.g. C1-BT02 + C2-BT01)",
+        "The Scenario Name for each row is synthesized from the Business Test Case names of the contributing conditions (not unit TC names)",
+        "The Business Scenario narrative is synthesized from the Business Test Case descriptions of the contributing conditions, forming an end-to-end business story",
         "Each Test Scenarios row includes a Business Scenario narrative describing the full business process for that combination",
         "The Expected Output column describes the business outcome (e.g. 'Raise applied — salary increases by 7%') not just 'Valid - accepted'"
       ]

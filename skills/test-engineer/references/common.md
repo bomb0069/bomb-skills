@@ -51,13 +51,22 @@ The **Test Scenarios** table (TS-01, TS-02, …) combines multiple conditions in
 
 **ID** — `TS-01`, `TS-02`, … sequential
 
-**Scenario Name** — one short business-readable sentence describing what this combination tests.
+**Scenario Name** — one short business-readable sentence synthesized from the **Business Test Case names** (BT-xx) of the contributing conditions (see Covers column).
+- Merge the key ideas from each contributing BT name into one sentence that describes the combined business situation
 - Write from a business perspective, not a technical one
-- Example: `"Developer employee applies for raise during salary freeze period"`
-- NOT: `"C1=Developer, C2=Not Eligible"`
+- Capture both the actor/subject AND the key condition that makes this combination meaningful
+- Examples:
+  - BT names: `"Developer submits for annual review"` + `"Employee on salary freeze"` → `"Developer employee applies for raise during salary freeze period"`
+  - BT names: `"QA tester standard review"` + `"Eligible employee"` → `"Tester receives standard performance raise"`
+- NOT: `"C1=Developer, C2=Not Eligible"` or a copy-paste of one BT name
 
-**Business Scenario** — 2–3 sentences describing the full business process for this row: who is involved, what they do, what data goes in, and what the system should produce.
-- Example: `"A system developer submits a salary review request. HR checks eligibility and finds a current salary freeze. The system blocks the raise and returns the original salary unchanged."`
+**Business Scenario** — 2–3 sentences synthesized from the **Business Test Case descriptions** (BT-xx) of the contributing conditions, joined into an end-to-end business story.
+- Combine the individual BT descriptions into a flowing narrative covering: **who** is involved, **what action** they take, **what data** goes in, and **what result** the system produces
+- The reader should understand the full journey from start to finish without needing to look up conditions separately
+- Each sentence should connect logically: setup → action → outcome
+- Examples:
+  - BT descriptions: `"A system developer submits annual salary review through HR portal"` + `"HR system finds active salary freeze on the employee account"` → `"A system developer submits an annual salary review request through the HR portal. The system checks eligibility and detects an active salary freeze on the account. The raise is blocked and the employee receives a notification with the freeze reason and the original salary unchanged."`
+- NOT a bullet list, NOT a copy of the Expected Output, NOT a repeat of the Scenario Name
 
 **Condition columns** — expand each condition into sub-columns so testers can copy values directly into the system under test:
 
@@ -74,10 +83,10 @@ Use a **business-readable header** that is self-explanatory without reading the 
 - `File Type (PDF/DOCX/XLSX only)` not `Input: File Type`
 - `Order Quantity (1–100 units)` not `Input: Quantity`
 
-**Covers** — condition test case IDs that combine to form this scenario, format `CX-TCxx`:
+**Covers** — Business Test Case IDs that combine to form this scenario, format `CX-BTxx`:
 - `C1` = Condition 1 (from the C1/C2/C3 IDs assigned in Step 1)
-- `TC02` = test case 02 from that condition's unit test case table
-- List all conditions: `C1-TC03 + C2-TC01 + C3-TC02`
+- `BT02` = business test case 02 from that condition's Business Test Cases table
+- List all conditions: `C1-BT03 + C2-BT01 + C3-BT02`
 
 **Expected Output** — write as a business outcome sentence:
 - Include what actually happens in the system
@@ -97,10 +106,10 @@ C2 is a plain EP condition (no associated parameter) → single column.
 
 | ID | Scenario Name | Business Scenario | Employee Department | Raise Rate (%) | Raise Eligibility | Covers | Expected Output |
 |---|---|---|---|---|---|---|---|
-| TS-01 | Developer receives standard raise | A system developer submits for annual review. HR confirms eligibility. System applies the 7% raise rate to current salary. | System Developer | 7% | Eligible | C1-TC02 + C2-TC01 | Raise applied — salary increases by 7% |
-| TS-02 | Developer frozen — raise blocked | A system developer submits for review but is on salary freeze. The system blocks the raise regardless of the role's rate. | System Developer | 7% | Not Eligible | C1-TC02 + C2-TC02 | No raise — salary unchanged, freeze reason shown |
-| TS-03 | Tester receives highest raise | A QA tester eligible for the highest standard raise rate of 10% submits for annual review. System applies full rate. | Tester | 10% | Eligible | C1-TC03 + C2-TC01 | Raise applied — salary increases by 10% |
-| TS-04 | Finance staff frozen | A finance department employee on salary freeze submits for review. System blocks the raise. | Finance | 6.5% | Not Eligible | C1-TC04 + C2-TC02 | No raise — salary unchanged |
+| TS-01 | Developer receives standard raise | A system developer submits an annual salary review request through the HR portal. HR confirms the employee is eligible with no active freeze. The system applies the 7% raise rate to the current salary. | System Developer | 7% | Eligible | C1-BT02 + C2-BT01 | Raise applied — salary increases by 7% |
+| TS-02 | Developer frozen — raise blocked | A system developer submits for review but the HR system detects an active salary freeze on the account. The raise is blocked regardless of the role's standard rate. The employee receives a notification showing the freeze reason and the original salary unchanged. | System Developer | 7% | Not Eligible | C1-BT02 + C2-BT02 | No raise — salary unchanged, freeze reason shown |
+| TS-03 | Tester receives highest raise | A QA tester submits for annual review and is confirmed eligible. The system looks up the tester's standard rate of 10% — the highest among all departments — and applies it to the current salary. | Tester | 10% | Eligible | C1-BT03 + C2-BT01 | Raise applied — salary increases by 10% |
+| TS-04 | Finance staff frozen | A finance department employee on salary freeze submits for review. The HR system detects the freeze and blocks the raise. The employee's salary remains unchanged. | Finance | 6.5% | Not Eligible | C1-BT04 + C2-BT02 | No raise — salary unchanged |
 
 
 
