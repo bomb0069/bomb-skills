@@ -79,6 +79,15 @@ _GH_MODEL_MAP = {
 
 # Copilot CLI backend
 _COPILOT_SESSIONS_DIR = Path("/tmp/eval-copilot-sessions")
+# Map internal model names → copilot --model values. None = use copilot default (Sonnet 4.6, 1x premium).
+# gpt-4.1 and gpt-5-mini are free included models (0 premium requests on paid plans).
+_COPILOT_MODEL_MAP = {
+    "sonnet": None,           # default = Claude Sonnet 4.6 (1× premium request)
+    "haiku": "gpt-4.1",       # free included model — good for grading
+    "gpt-4.1": "gpt-4.1",
+    "gpt-5-mini": "gpt-5-mini",
+    "gpt-4o": "gpt-4o",
+}
 
 
 def load_eval_spec(skill_name: str) -> dict:
@@ -157,7 +166,7 @@ def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL
     if _BACKEND == "github-models":
         return _run_github_models(prompt, system_prompt=system_prompt, model=model, resume_session=resume_session)
     if _BACKEND == "copilot":
-        return _run_copilot_cli(prompt, system_prompt=system_prompt, resume_session=resume_session)
+        return _run_copilot_cli(prompt, system_prompt=system_prompt, model=model, resume_session=resume_session)
     return _run_claude_cli(prompt, system_prompt=system_prompt, model=model, resume_session=resume_session)
 
 
@@ -290,12 +299,14 @@ def _run_github_models(prompt: str, system_prompt: str | None = None, model: str
     }
 
 
-def _run_copilot_cli(prompt: str, system_prompt: str | None = None, resume_session: str | None = None) -> dict:
+def _run_copilot_cli(prompt: str, system_prompt: str | None = None, model: str = MODEL_EVAL, resume_session: str | None = None) -> dict:
     """Run a prompt through the GitHub Copilot CLI (copilot -p).
 
     Sessions are tracked in /tmp/eval-copilot-sessions/ using UUIDs passed to --resume=<id>.
     On the first turn, the system_prompt is prepended to the user prompt since copilot CLI
     has no --system-prompt flag.
+    Model is mapped via _COPILOT_MODEL_MAP; None = copilot default (Claude Sonnet 4.6).
+    Free included models (gpt-4.1, gpt-5-mini) use 0 premium requests on paid plans.
     """
     _COPILOT_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
     session_id = resume_session or str(uuid.uuid4())
@@ -318,6 +329,9 @@ def _run_copilot_cli(prompt: str, system_prompt: str | None = None, resume_sessi
         "--no-ask-user",
         f"--resume={session_id}",
     ]
+    copilot_model = _COPILOT_MODEL_MAP.get(model, model)
+    if copilot_model:
+        cmd.extend(["--model", copilot_model])
 
     start = time.time()
     try:
@@ -1088,14 +1102,24 @@ def main():
         metavar="N",
         help="Max parallel eval runs (default: 0 = all at once). Use 5 to avoid rate limits.",
     )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        metavar="MODEL",
+        help="Override eval model (e.g. gpt-4.1 for free Copilot included model). Applies to all backends.",
+    )
     args = parser.parse_args()
 
-    global _BACKEND
+    global _BACKEND, MODEL_EVAL
     _BACKEND = args.backend
+    if args.model:
+        MODEL_EVAL = args.model
     if _BACKEND == "github-models":
         print(f"Backend: GitHub Models (gpt-4o for evals, gpt-4o-mini for grading)")
     elif _BACKEND == "copilot":
-        print(f"Backend: Copilot CLI (uses Copilot premium requests)")
+        model_display = MODEL_EVAL if args.model else "Claude Sonnet 4.6 (default, 1× premium)"
+        print(f"Backend: Copilot CLI | model: {model_display}")
 
     if args.list:
         list_evals()
