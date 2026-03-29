@@ -82,6 +82,20 @@ For each condition, generate **Business Test Cases** (BT-01) with realistic vali
 
 **When there are 2+ conditions**, generate the combined test scenarios using the method chosen in Step 2. See the appropriate reference file for rules.
 
+### Step 5b: Gap Analysis — Check for Hidden Requirements
+
+**When the requirement includes a calculated output** (a formula that derives an output value from multiple conditions), run gap analysis **after** generating the scenarios:
+
+1. Compute the output value for representative scenario rows using the stated formula
+2. Check the result against all stated output conditions (type, range, format)
+3. If any result violates an output condition → flag as a **Requirement Gap**
+4. Ask the user about the missing hidden rule via `AskUserQuestion`
+5. Add the hidden rule as a `[Hidden]` condition and update affected test cases
+
+See [references/gap-analysis.md](references/gap-analysis.md) for gap types, warning format, question options, and update rules.
+
+Skip this step when there is no calculated output (conditions are validated independently).
+
 ### Step 6: Offer to Save Results
 
 After generating all test cases, add at the end (as text, NOT `AskUserQuestion`):
@@ -101,7 +115,8 @@ For worked examples, see [references/examples.md](references/examples.md).
 2. **Combined EP partition diagram** — overlaps across all conditions
 3. **Per-condition sections** — individual partition diagrams + Unit Test Cases + Business Test Cases
 4. **Test Scenarios** — test cases generated from each overlap zone
-5. **Offer to save**
+5. **Gap Analysis** (if calculated output) — flag gaps, ask hidden rule via AskUserQuestion, update test cases
+6. **Offer to save**
 
 **Output pattern for multiple conditions (mixed BVA/EP/STT):**
 
@@ -109,7 +124,8 @@ For worked examples, see [references/examples.md](references/examples.md).
 2. **Ask for combination method** (AskUserQuestion) — then continue after user responds
 3. **Per-condition sections** — diagram + Unit Test Cases + Business Test Cases
 4. **Test Scenarios** — combined decision table
-5. **Offer to save**
+5. **Gap Analysis** (if calculated output) — flag gaps, ask hidden rule via AskUserQuestion, update test cases
+6. **Offer to save**
 
 **Output pattern for single condition:**
 

@@ -336,6 +336,36 @@
         "The output uses the EP combined partition diagram approach for the multiple EP conditions",
         "The output generates test cases covering combinations of all three conditions (department × level × contract type)"
       ]
+    },
+    {
+      "id": 32,
+      "prompt": "Product pricing: base price 100-50000 (integer, Thai Baht) AND bonus rate (10%, 15%, 20%). New price = base price + (base price × bonus rate). The new price must also be a valid product price (integer, Thai Baht). Generate test cases.",
+      "expected_output": "The skill detects that the calculated new price can produce fractional values (e.g. base 333 × 10% = 333.3 → new price 366.3) which violates the integer constraint on new price, then asks the user about the missing rounding rule before generating final test cases.",
+      "files": [],
+      "turns": [
+        {
+          "respond": "round up (ceiling)",
+          "assertions": [
+            "The output applies the round-up rule to the affected test cases (e.g. new price 366.3 becomes 367)",
+            "The output includes the rounding rule as an added condition in the test scenarios"
+          ]
+        }
+      ],
+      "assertions": [
+        "The output detects a requirement gap: the new price calculation can produce a decimal result that violates the integer constraint",
+        "The output flags the gap with a clear warning or notice (e.g. '⚠️ Requirement Gap' or 'Hidden Requirement')",
+        "The output asks the user about the missing rounding rule (e.g. round up, round down, round to nearest, truncate)"
+      ]
+    },
+    {
+      "id": 33,
+      "prompt": "Insurance premium: base premium 1000-100000 (integer, Thai Baht) AND risk level (Low: -10%, Medium: +0%, High: +20%). Final premium = base × (1 + rate). Final premium must be a valid premium amount (integer, Thai Baht, minimum 500). Generate test cases.",
+      "expected_output": "The skill detects that: (1) combining base premium with risk rates can produce fractional results requiring rounding, and (2) Low risk on minimum base (1000 × 0.9 = 900) is valid but might go below 500 for edge cases — it asks about the rounding rule for fractional results.",
+      "files": [],
+      "assertions": [
+        "The output detects a requirement gap where the calculated final premium can be fractional",
+        "The output asks the user about the missing rounding or adjustment rule for the final premium"
+      ]
     }
   ]
 }
