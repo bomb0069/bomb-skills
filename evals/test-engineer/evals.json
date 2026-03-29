@@ -518,6 +518,21 @@
         "For Expired, the output suggests a possible resurrection path such as restoration due to system error or fraud investigation",
         "The output asks the user to confirm whether each flagged quasi-terminal should remain terminal or needs an escape transition added"
       ]
+    },
+    {
+      "id": 44,
+      "prompt": "Loyalty points system. States: Earned, Active, Redeemed, Expired, Cancelled. Transitions: Earned→Active (activate), Active→Redeemed (redeem), Active→Expired (auto-expire 180 days), Active→Cancelled (admin cancels), Redeemed→Active (fraud reversal). Generate test cases.",
+      "expected_output": "Two levels of tests: (1) transition test cases (ST-xx) for each individual transition, including BVA test cases for the 180-day expiry condition; (2) state journey scenarios (SJ-xx) for each end-to-end path from Earned to every terminal state.",
+      "files": [],
+      "assertions": [
+        "The output generates Level 1 transition test cases (ST-xx) for each valid transition",
+        "The output generates BVA boundary test cases for the Active→Expired transition combined with the 180-day threshold (boundary values: 179, 180, 181 days)",
+        "The output generates invalid transition test cases for transitions blocked in the pivot matrix",
+        "The output generates Level 2 State Journey Scenarios (SJ-xx) as separate end-to-end paths from start to each terminal state",
+        "Each SJ scenario includes a Journey Name, Business Story narrative, State Path sequence, and Expected Final State",
+        "The SJ scenarios cover all terminal states: Redeemed, Expired, and Cancelled each appear as final states in at least one journey",
+        "The SJ scenarios cover the fraud reversal path: Redeemed→Active→Cancelled appears in at least one journey"
+      ]
     }
   ]
 }

@@ -352,17 +352,71 @@ Build a pivot matrix where **rows = From State**, **columns = To State**, and **
 
 ## Test Case Generation
 
-Generate test cases for:
-- **Valid transitions**: one test per valid transition (verify state changes correctly)
-- **Invalid transitions**: attempt transitions that should NOT be allowed (verify system rejects)
-- **Happy path**: end-to-end flow from start to terminal state
-- **Cycles**: if any cycle exists (e.g., Rejected→Draft), test the loop
+Generate two levels of tests:
 
-Test case format:
+### Level 1 — Transition Test Cases (per-transition)
 
-| ID | Name | Description | Input: Current State | Input: Action | Expected: Next State | Expected Output |
+One test case per transition. When a transition has an associated condition (e.g., BVA boundary, time rule, EP partition), **combine the state transition with that condition's test cases** to fully cover the boundary.
+
+Example: `Active → Expired` triggered by "auto-expire after 180 days" — combine with BVA:
+
+| ID | Name | Description | Input: Current State | Input: Days Since Activation | Expected: Next State | Expected Output |
 |---|---|---|---|---|---|---|
+| ST-01 | Points expire at boundary | Points active exactly 180 days — expire trigger fires | Active | 180 | Expired | State changed to Expired |
+| ST-02 | Points still active just before | One day before the expiry boundary — no trigger | Active | 179 | Active | State unchanged — still Active |
+| ST-03 | Points already expired on day after | Day 181 — expiry should have been triggered at 180 | Active | 181 | Expired | State changed to Expired |
+| ST-04 | Invalid: Expired → Active directly | Attempt to reactivate without restoration process | Expired | - | - | Invalid — transition not allowed |
 
-- ID prefix: `ST-01`, `ST-02` (for State Transition)
-- Valid → "Valid - state changed to {next}"
-- Invalid → "Invalid - transition not allowed"
+**Rules for transition test cases:**
+- **Valid transitions**: one test per valid transition (verify state changes correctly)
+- **Invalid transitions**: one test per `-` cell in the pivot matrix (verify system rejects)
+- **Condition-combined transitions**: when a transition has a numeric threshold, date rule, or EP partition — generate BVA/EP test cases for that condition and pair each with the transition
+- **Cycles**: if any cycle exists (e.g., Rejected→Draft→Submitted), generate tests for each step in the loop
+- ID prefix: `ST-01`, `ST-02`
+- Valid → `"Valid - state changed to {next state}"`
+- Invalid → `"Invalid - transition not allowed"`
+
+---
+
+### Level 2 — State Journey Scenarios (end-to-end paths)
+
+Generate one scenario per distinct **path from start state to a terminal state**. Each scenario is a complete business story — the sequence of states and events a real entity travels through from creation to its final resting state.
+
+**Path enumeration rules:**
+- Start from the initial state (the state an entity enters when first created)
+- Enumerate every distinct path to every terminal state
+- For branches (Approved vs Rejected), each branch = a separate scenario
+- For cycles (Rejected→Draft→Submitted), test the loop once then continue to terminal
+- For long paths, collapse obvious linear chains: `New→Processing→Confirmed` can be one step description if there are no branches in between
+
+**State Journey Scenarios table format:**
+
+| ID | Journey Name | Business Story | State Path | Expected Final State |
+|---|---|---|---|---|
+
+**Column definitions:**
+
+**Journey Name** — one sentence describing the full arc of this path in business terms:
+- `"Loyalty member earns and redeems points normally"`
+- `"Points expire before member has a chance to redeem"`
+- `"Fraudulent redemption reversed by operations team"`
+
+**Business Story** — 3–5 sentences narrating the full end-to-end event sequence. Each sentence = one state transition in the path. Written as a business scenario, not technical steps.
+
+**State Path** — the sequence of states, e.g.: `Active → Redeemed → (terminal)`
+- Show the action/event on each arrow: `Active --[redeems]--> Redeemed`
+
+**Expected Final State** — the terminal state this path ends in, and what it means in business terms.
+
+**Example** (Loyalty Points system — states: Earned, Active, Redeemed, Expired, Cancelled):
+
+| ID | Journey Name | Business Story | State Path | Expected Final State |
+|---|---|---|---|---|
+| SJ-01 | Member earns and redeems points successfully | Member completes a purchase and points are issued in Earned state. System activates the points after verification. Member browses the rewards catalogue and selects a reward to redeem. System processes the redemption and points move to Redeemed. Points record is closed — no further changes possible. | Earned --[activate]--> Active --[redeem]--> Redeemed | Redeemed — points consumed, record closed |
+| SJ-02 | Points expire before redemption | Member earns points but does not log in or redeem within 180 days. The auto-expiry job runs at the 180-day mark and moves points to Expired. Points are permanently lost unless restored by operations. | Earned --[activate]--> Active --[auto-expire 180d]--> Expired | Expired — points lost, no further transitions |
+| SJ-03 | Admin cancels points due to fraud | Fraud team detects suspicious earn transaction. Admin cancels the points directly from Active state. Points are locked and closed. Member is notified. | Earned --[activate]--> Active --[admin cancels]--> Cancelled | Cancelled — points invalidated |
+| SJ-04 | Fraudulent redemption reversed | Member redeems points but fraud detection flags the transaction post-redemption. Operations team triggers reversal, returning points to Active state for reassessment. Member is placed under review. Points eventually cancelled by admin. | Active --[redeem]--> Redeemed --[reverse]--> Active --[admin cancels]--> Cancelled | Cancelled — fraud case resolved |
+
+**SJ ID prefix**: `SJ-01`, `SJ-02` (State Journey)
+
+**Coverage goal**: every terminal state must be reached by at least one journey scenario. Every branch point in the diagram must be covered by at least two scenarios (one per branch).
