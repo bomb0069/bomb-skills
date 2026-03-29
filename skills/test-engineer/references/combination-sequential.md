@@ -4,7 +4,9 @@ Follow the business validation order. If an earlier condition fails, stop — do
 
 ## Flowchart Diagram
 
-Show a flowchart before the table:
+Show a flowchart before the table. Output **both ASCII and Mermaid** formats. See [references/mermaid.md](mermaid.md) for full format rules and examples.
+
+ASCII:
 ```
 Sequential Validation: {Condition1} → {Condition2} → ...
 
@@ -27,6 +29,16 @@ Sequential Validation: {Condition1} → {Condition2} → ...
                 ┌────▼─────┐
                 │ Accepted │
                 └──────────┘
+```
+
+Mermaid:
+```mermaid
+flowchart TD
+    A([Input]) --> B{Check\nCondition 1}
+    B -- FAIL --> B_out[✗ Rejected\nreason: condition 1 failed]
+    B -- PASS --> C{Check\nCondition 2}
+    C -- FAIL --> C_out[✗ Rejected\nreason: condition 2 failed]
+    C -- PASS --> E([✓ Accepted])
 ```
 
 ## Rules

@@ -304,28 +304,15 @@ After decisions: finalize terminal states list and update the diagram if any esc
 
 ## State Transition Diagram
 
-The final state diagram and pivot matrix are produced **after Phase 2** (once all `[GAP?]` decisions are resolved). All arrows are solid — no `[?]` or `[GAP?]` labels remain.
+All state transition diagrams are generated in **both ASCII and Mermaid (`stateDiagram-v2`)** format. See [references/mermaid.md](mermaid.md) for the full format, examples, and legend rules.
 
-Draw the diagram in a code block using the format below. Show the action/event label on every arrow.
+Three diagram variants are produced during the workflow:
 
-```
-{Workflow name}
+1. **Phase 1 proposal diagram** — requirement transitions (no tag) + domain knowledge suggestions labeled `[?]`
+2. **Phase 2 gap check diagram** — confirmed transitions + unconfirmed plausible transitions labeled `[GAP?]`; quasi-terminal escape paths labeled `[ESCAPE?]`
+3. **Final diagram** — produced after all Phase 2 and Step 3b decisions are resolved; all transitions confirmed, no tags
 
-                          {action}              {action}
-  [Start] ──────────► [{State A}] ──────────► [{State B}] ──────► [{Terminal}]
-                           │                       │
-                       {action}                    │ (no outgoing — terminal)
-                           ▼                       │
-                      [{State C}] ◄────────────────┘
-                                         {action}
-```
-
-For branching paths (e.g., Approved OR Rejected):
-```
-                                    ┌─── Approve ──► [Approved] ──► [Published]
-  [Draft] ──► [Submitted] ──► [Review] ─┤
-                                    └─── Reject ───► [Rejected] ──► [Draft] (cycle)
-```
+The final diagram and pivot matrix are produced **after Phase 2** (once all `[GAP?]` and `[ESCAPE?]` decisions are resolved).
 
 ## State Transition Table (Pivot Matrix)
 
