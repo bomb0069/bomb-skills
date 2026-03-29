@@ -44,6 +44,17 @@ Combined Partitions: {Condition A} × {Condition B} → {Result}
 
 Each overlap zone IS a test case.
 
+## All-EP Combination Workflow
+
+**When all conditions are EP type** (no BVA or STT), skip the combination method question and apply the EP combined partition diagram directly:
+
+1. **Build the combined partition diagram** — show every valid partition intersection across all conditions
+2. **Each overlap zone = one test case** — every combination of one valid value from each condition
+3. **Add invalid partitions** — one test case per invalid partition per condition (other conditions at a valid value)
+4. **Generate test cases from the diagram** — ID prefix `TC-01` for per-condition unit tests, then `TS-01` for combined scenarios from overlap zones
+
+This produces a minimal complete set: all meaningful combinations are covered without asking the user to pick a method.
+
 ## Steps
 
 1. **Identify valid partitions** — each allowed value or class of valid inputs

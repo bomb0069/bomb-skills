@@ -169,10 +169,12 @@
     {
       "id": 17,
       "prompt": "User registration: gender (dropdown: Male, Female, Other) AND status (dropdown: Active, Inactive, Suspended). Generate test cases.",
-      "expected_output": "A combined Test Scenarios table combining gender and status values.",
+      "expected_output": "A combined EP partition diagram showing gender × status overlaps, followed by test cases for each overlap zone, WITHOUT asking the user to choose a combination method.",
       "files": [],
       "assertions": [
-        "The output includes a Test Scenarios table or asks user to choose combination method",
+        "The output does NOT ask the user to choose a combination method (all combinations, pairwise, etc.)",
+        "The output includes a combined EP partition diagram or grid showing gender × status overlap zones",
+        "The output generates test cases covering the overlap zones (e.g. Male+Active, Female+Inactive, etc.)",
         "The output addresses both gender and status conditions"
       ]
     },
@@ -279,17 +281,12 @@
     {
       "id": 27,
       "prompt": "Bonus system: department (Engineering 7%, Finance 6.5%, QA 10%) AND level (Manager +1%, Lead +0.5%, Normal +0%). Generate test cases.",
-      "expected_output": "A combined partition diagram showing department × level overlaps with calculated bonus rates, followed by test scenarios.",
+      "expected_output": "A combined EP partition diagram showing department × level overlaps with calculated bonus rates, followed by test cases for each overlap zone, WITHOUT asking the user to choose a combination method.",
       "files": [],
-      "turns": [
-        {
-          "respond": "all combinations",
-          "assertions": []
-        }
-      ],
       "assertions": [
-        "The output includes a combined partition diagram or test scenarios showing department × level combinations with calculated bonus rates",
-        "The output shows calculated values for combinations (e.g. Engineering+Manager = 8%)"
+        "The output does NOT ask the user to choose a combination method",
+        "The output includes a combined EP partition diagram or grid showing department × level overlap zones with calculated bonus rates",
+        "The output shows calculated values for each combination (e.g. Engineering+Manager = 8%, Finance+Lead = 7%, QA+Normal = 10%)"
       ]
     },
     {
@@ -314,6 +311,29 @@
         "The output includes test cases for the happy path (Draft→Submitted→Under Review→Approved→Published)",
         "The output includes test cases for the rejection cycle (Rejected→Draft→Submitted)",
         "The output includes test cases for invalid transitions"
+      ]
+    },
+    {
+      "id": 30,
+      "prompt": "User registration: gender (dropdown: Male, Female, Other) AND member type (dropdown: Regular, Premium, VIP). Generate test cases.",
+      "expected_output": "A combined EP partition diagram showing gender × member type overlaps, followed by test cases for each overlap zone, WITHOUT asking the user to choose a combination method.",
+      "files": [],
+      "assertions": [
+        "The output does NOT ask the user to choose a combination method (all combinations, pairwise, business-driven, sequential)",
+        "The output includes a combined EP partition diagram showing gender × member type overlap zones",
+        "The output generates test cases for each overlap zone (e.g. Male+Regular, Male+Premium, Male+VIP, Female+Regular, Female+Premium, Female+VIP, Other+Regular, Other+Premium, Other+VIP)",
+        "The output includes invalid partitions (e.g. invalid gender value, invalid member type)"
+      ]
+    },
+    {
+      "id": 31,
+      "prompt": "Bonus system: department (Engineering, Finance, QA) AND level (Manager, Lead, Normal) AND contract type (Permanent, Contract). Generate test cases.",
+      "expected_output": "Combined EP partition diagram for all three EP conditions with test cases for overlap zones, no combination method question asked.",
+      "files": [],
+      "assertions": [
+        "The output does NOT ask the user to choose a combination method",
+        "The output uses the EP combined partition diagram approach for the multiple EP conditions",
+        "The output generates test cases covering combinations of all three conditions (department × level × contract type)"
       ]
     }
   ]

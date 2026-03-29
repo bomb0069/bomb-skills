@@ -52,7 +52,9 @@ If min > max for any condition, flag as a likely error.
 
 ### Step 2: Choose Combination Method (if 2+ conditions)
 
-**When there are 2+ conditions** and the user has not specified a method, ask via `AskUserQuestion` with header "Scenarios" **before** generating per-condition tables:
+**When all conditions are EP type** (no BVA or STT conditions), skip asking for a combination method — proceed directly with the EP combined partition diagram workflow described in [references/ep.md](references/ep.md) (All-EP Combination Workflow section).
+
+**When there are 2+ conditions with mixed techniques** (BVA, EP, STT) and the user has not specified a method, ask via `AskUserQuestion` with header "Scenarios" **before** generating per-condition tables:
 
 1. **All combinations** — see [references/combination-all.md](references/combination-all.md)
 2. **Pairwise** — see [references/combination-pairwise.md](references/combination-pairwise.md)
@@ -93,7 +95,15 @@ If user says yes: create `test-cases/` folder if needed, save complete output as
 
 For worked examples, see [references/examples.md](references/examples.md).
 
-**Output pattern for multiple conditions:**
+**Output pattern for multiple conditions (all EP):**
+
+1. **Input Analysis** — list all conditions, note EP for each
+2. **Combined EP partition diagram** — overlaps across all conditions
+3. **Per-condition sections** — individual partition diagrams + Unit Test Cases + Business Test Cases
+4. **Test Scenarios** — test cases generated from each overlap zone
+5. **Offer to save**
+
+**Output pattern for multiple conditions (mixed BVA/EP/STT):**
 
 1. **Input Analysis** — list all conditions, note technique (BVA / EP / STT)
 2. **Ask for combination method** (AskUserQuestion) — then continue after user responds
