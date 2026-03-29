@@ -2,14 +2,17 @@
 """
 Eval runner for bomb-skills.
 
-Uses Claude Code CLI (claude -p) as subagent to execute evals.
-Each eval runs twice: with_skill (SKILL.md loaded) and without_skill (baseline).
-A separate grading call evaluates assertions against actual output.
+Supports two inference backends (--backend):
+  - claude     : Claude Code CLI (claude -p) — default; requires Claude Code subscription
+  - github-models : GitHub Models API via gh token — use when Claude quota is exhausted
+
+Each eval runs the skill prompt and grades assertions via LLM-as-judge.
+A separate grading call uses a faster/cheaper model.
 
 Parallelism:
 - All evals run concurrently (ThreadPoolExecutor)
 - Within each eval, with_skill and without_skill run concurrently
-- Grading uses haiku model for speed
+- Grading uses haiku/gpt-4o-mini model for speed
 
 Follows the agentskills.io eval format:
 - Evals defined in evals/<skill-name>/evals.json
@@ -17,21 +20,33 @@ Follows the agentskills.io eval format:
 - Outputs: grading.json, timing.json, benchmark.json, feedback.json
 
 Usage:
-    python3 evals/run_evals.py <skill-name>              # Run skill-only evals (fast, no baseline)
-    python3 evals/run_evals.py <skill-name> --baseline   # Run with baseline comparison
-    python3 evals/run_evals.py <skill-name> --eval 1,2   # Run specific eval IDs only
-    python3 evals/run_evals.py --all                     # Run all evals
-    python3 evals/run_evals.py --list                    # List available evals
-    python3 evals/run_evals.py <skill-name> --improve    # Suggest SKILL.md improvements from latest iteration
-    python3 evals/run_evals.py <skill-name> --deploy     # Deploy skill to testing folder for manual testing
+    python3 evals/run_evals.py <skill-name>                          # Run skill-only evals (fast, no baseline)
+    python3 evals/run_evals.py <skill-name> --baseline               # Run with baseline comparison
+    python3 evals/run_evals.py <skill-name> --eval 1,2               # Run specific eval IDs only
+    python3 evals/run_evals.py <skill-name> --backend github-models  # Use GitHub Models API instead of Claude CLI
+    python3 evals/run_evals.py --all                                 # Run all evals
+    python3 evals/run_evals.py --list                                # List available evals
+    python3 evals/run_evals.py <skill-name> --improve                # Suggest SKILL.md improvements from latest iteration
+    python3 evals/run_evals.py <skill-name> --deploy                 # Deploy skill to testing folder for manual testing
+
+Backend notes:
+  claude         Requires `claude` CLI installed and logged in (Claude Code subscription).
+  github-models  Requires `gh` CLI authenticated (`gh auth login`).
+                 Uses gpt-4o for evals and gpt-4o-mini for grading.
+                 Sessions stored in /tmp/eval-gh-sessions/ for multi-turn support.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import time
+import urllib.request
+import urllib.error
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -42,6 +57,19 @@ SKILLS_DIR = PROJECT_DIR / "skills"
 MODEL_EVAL = "sonnet"
 MODEL_GRADING = "sonnet"
 DEPLOY_DIR = PROJECT_DIR.parent / f"deploy-{PROJECT_DIR.name}"
+
+# Active backend — set by --backend flag in main()
+_BACKEND = "claude"
+
+# GitHub Models API
+_GH_MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
+_GH_SESSIONS_DIR = Path("/tmp/eval-gh-sessions")
+_GH_MODEL_MAP = {
+    "sonnet": "gpt-4o",
+    "haiku": "gpt-4o-mini",
+    "claude-sonnet-4-5": "gpt-4o",
+    "claude-haiku-4-5": "gpt-4o-mini",
+}
 
 
 def load_eval_spec(skill_name: str) -> dict:
@@ -112,11 +140,18 @@ def create_workspace_structure(skill_name: str, spec: dict, run_baseline: bool =
 
 
 def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL_EVAL, resume_session: str | None = None) -> dict:
-    """Run a prompt through Claude Code CLI and return parsed JSON result.
+    """Run a prompt through the configured backend (Claude CLI or GitHub Models).
 
     For multi-turn: pass resume_session to continue an existing conversation.
     Session ID is returned in the response's 'session_id' field.
     """
+    if _BACKEND == "github-models":
+        return _run_github_models(prompt, system_prompt=system_prompt, model=model, resume_session=resume_session)
+    return _run_claude_cli(prompt, system_prompt=system_prompt, model=model, resume_session=resume_session)
+
+
+def _run_claude_cli(prompt: str, system_prompt: str | None = None, model: str = MODEL_EVAL, resume_session: str | None = None) -> dict:
+    """Run a prompt through Claude Code CLI and return parsed JSON result."""
     cmd = [
         "claude", "-p", prompt,
         "--output-format", "json",
@@ -143,6 +178,105 @@ def run_claude(prompt: str, system_prompt: str | None = None, model: str = MODEL
         return {"error": "Timeout after 300s", "result": "", "duration_ms": 300000, "usage": {}}
     except json.JSONDecodeError:
         return {"error": "Failed to parse Claude output", "result": result.stdout, "duration_ms": 0, "usage": {}}
+
+
+def _get_gh_token() -> str:
+    """Get GitHub token from environment or gh CLI."""
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
+    if not token:
+        try:
+            result = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, timeout=10)
+            token = result.stdout.strip()
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+    return token
+
+
+def _run_github_models(prompt: str, system_prompt: str | None = None, model: str = MODEL_EVAL, resume_session: str | None = None) -> dict:
+    """Run a prompt through the GitHub Models API (OpenAI-compatible endpoint).
+
+    Stores conversation history in /tmp/eval-gh-sessions/ for multi-turn support.
+    Model names are mapped: sonnet→gpt-4o, haiku→gpt-4o-mini.
+    """
+    _GH_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    gh_model = _GH_MODEL_MAP.get(model, "gpt-4o")
+    token = _get_gh_token()
+
+    # Load or create session
+    session_id = resume_session or str(uuid.uuid4())
+    session_path = _GH_SESSIONS_DIR / f"{session_id}.json"
+    messages: list[dict] = []
+
+    if resume_session and session_path.exists():
+        with open(session_path) as f:
+            messages = json.load(f)
+
+    if system_prompt and (not messages or messages[0].get("role") != "system"):
+        messages.insert(0, {"role": "system", "content": system_prompt})
+
+    messages.append({"role": "user", "content": prompt})
+
+    payload = json.dumps({
+        "model": gh_model,
+        "messages": messages,
+        "max_tokens": 8192,
+        "temperature": 0,
+    }).encode()
+
+    req = urllib.request.Request(
+        _GH_MODELS_URL,
+        data=payload,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST",
+    )
+
+    start = time.time()
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                data = json.loads(resp.read())
+            break  # success
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            if e.code == 429 and attempt < max_retries - 1:
+                wait = 2 ** attempt + 1  # 2, 3, 5, 9 seconds
+                time.sleep(wait)
+                req = urllib.request.Request(
+                    _GH_MODELS_URL,
+                    data=payload,
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                    method="POST",
+                )
+                continue
+            return {"error": f"HTTP {e.code}: {body[:200]}", "result": "", "duration_ms": 0, "usage": {}, "session_id": session_id}
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt + 1)
+                continue
+            return {"error": str(e), "result": "", "duration_ms": 0, "usage": {}, "session_id": session_id}
+
+    elapsed_ms = int((time.time() - start) * 1000)
+    content = data["choices"][0]["message"]["content"]
+    api_usage = data.get("usage", {})
+
+    # Persist session for multi-turn
+    messages.append({"role": "assistant", "content": content})
+    with open(session_path, "w") as f:
+        json.dump(messages, f)
+
+    return {
+        "result": content,
+        "session_id": session_id,
+        "duration_ms": elapsed_ms,
+        "total_cost_usd": 0,
+        "usage": {
+            "input_tokens": api_usage.get("prompt_tokens", 0),
+            "output_tokens": api_usage.get("completion_tokens", 0),
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0,
+        },
+    }
 
 
 def extract_timing(claude_result: dict) -> dict:
@@ -193,7 +327,7 @@ Respond in this exact JSON format (no markdown, no code fences):
     result = run_claude(
         grading_prompt,
         system_prompt="You are an eval grader. Output only valid JSON, no markdown fences.",
-        model=MODEL_GRADING,
+        model="haiku",  # Use faster/cheaper model for grading (haiku → gpt-4o-mini for github-models)
     )
 
     response_text = result.get("result", "")
@@ -309,24 +443,24 @@ def run_variant(ev: dict, variant: str, skill_name: str, iteration_dir: Path) ->
                     "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0,
                     "duration_ms": 0, "cost_usd": 0}
 
-    # Turn 1: initial prompt (don't use --no-session-persistence so we get a session_id)
-    claude_result = run_claude(prompt, system_prompt, resume_session=None)
-    # Remove --no-session-persistence for multi-turn: need session to persist
-    # We achieve this by NOT passing resume_session=None but the function already
-    # handles this — when resume_session is None and multi-turn, we need session persistence.
-    # Let's re-run without --no-session-persistence:
-    cmd = [
-        "claude", "-p", prompt,
-        "--output-format", "json",
-        "--model", MODEL_EVAL,
-    ]
-    if system_prompt:
-        cmd.extend(["--system-prompt", system_prompt])
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        claude_result = json.loads(result.stdout) if result.returncode == 0 else {"error": result.stderr, "result": "", "duration_ms": 0, "usage": {}}
-    except (subprocess.TimeoutExpired, json.JSONDecodeError):
-        claude_result = {"error": "Turn 1 failed", "result": "", "duration_ms": 0, "usage": {}}
+    # Turn 1: run initial prompt with session persistence so we get a session_id for follow-up turns.
+    # For claude backend: call CLI without --no-session-persistence.
+    # For github-models backend: run_claude() always creates a persistent session automatically.
+    if _BACKEND == "github-models":
+        claude_result = run_claude(prompt, system_prompt, resume_session=None)
+    else:
+        cmd = [
+            "claude", "-p", prompt,
+            "--output-format", "json",
+            "--model", MODEL_EVAL,
+        ]
+        if system_prompt:
+            cmd.extend(["--system-prompt", system_prompt])
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            claude_result = json.loads(result.stdout) if result.returncode == 0 else {"error": result.stderr, "result": "", "duration_ms": 0, "usage": {}}
+        except (subprocess.TimeoutExpired, json.JSONDecodeError):
+            claude_result = {"error": "Turn 1 failed", "result": "", "duration_ms": 0, "usage": {}}
 
     session_id = claude_result.get("session_id")
     output_text = claude_result.get("result", "")
@@ -424,8 +558,11 @@ def run_single_eval(ev: dict, skill_name: str, iteration_dir: Path, run_baseline
     return eval_result
 
 
-def run_eval(skill_name: str, spec: dict, run_baseline: bool = True) -> dict:
-    """Run all evaluations for a skill — all evals in parallel."""
+def run_eval(skill_name: str, spec: dict, run_baseline: bool = True, max_parallel: int = 0) -> dict:
+    """Run all evaluations for a skill.
+
+    max_parallel: max concurrent evals (0 = unlimited, all at once).
+    """
     skill_exists = check_skill_exists(skill_name)
     iteration_dir = create_workspace_structure(skill_name, spec, run_baseline)
 
@@ -470,12 +607,13 @@ def run_eval(skill_name: str, spec: dict, run_baseline: bool = True) -> dict:
         write_benchmark(iteration_dir, results["evals"], spec)
         return results
 
-    # Run all evals in parallel
+    # Run all evals in parallel (respecting max_parallel limit)
     mode = "with baseline" if run_baseline else "skill-only"
-    print(f"  Running {len(spec['evals'])} evals in parallel ({mode})...")
+    concurrency = max_parallel if max_parallel > 0 else len(spec["evals"])
+    print(f"  Running {len(spec['evals'])} evals in parallel ({mode}, concurrency={concurrency})...")
     all_eval_results = []
 
-    with ThreadPoolExecutor(max_workers=len(spec["evals"])) as executor:
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
         futures = {
             executor.submit(run_single_eval, ev, skill_name, iteration_dir, run_baseline): ev
             for ev in spec["evals"]
@@ -880,7 +1018,25 @@ def main():
     parser.add_argument("--deploy", action="store_true", help="Deploy skill to testing folder for manual testing")
     parser.add_argument("--baseline", action="store_true", help="Also run without_skill baseline for comparison (skipped by default)")
     parser.add_argument("--eval", type=str, help="Run specific eval IDs only (comma-separated, e.g. --eval 1,2,3)")
+    parser.add_argument(
+        "--backend",
+        choices=["claude", "github-models"],
+        default="claude",
+        help="Inference backend: 'claude' (default, requires Claude CLI) or 'github-models' (uses gh token + gpt-4o)",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Max parallel eval runs (default: 0 = all at once). Use 5 to avoid rate limits.",
+    )
     args = parser.parse_args()
+
+    global _BACKEND
+    _BACKEND = args.backend
+    if _BACKEND == "github-models":
+        print(f"Backend: GitHub Models (gpt-4o for evals, gpt-4o-mini for grading)")
 
     if args.list:
         list_evals()
@@ -938,7 +1094,7 @@ def main():
 
     print(f"=== Evaluating: {args.skill} ===")
     print(f"Evals: {len(spec['evals'])}" + (f" (IDs: {args.eval})" if args.eval else ""))
-    results = run_eval(args.skill, spec, run_baseline=args.baseline)
+    results = run_eval(args.skill, spec, run_baseline=args.baseline, max_parallel=args.concurrency)
     print_results(results)
 
 
