@@ -50,7 +50,20 @@ Assign a technique to each condition:
 
 If min > max for any condition, flag as a likely error.
 
-### Step 2: Per-Condition Loop
+### Step 2: Choose Combination Method (if 2+ conditions)
+
+**When there are 2+ conditions** and the user has not specified a method, ask via `AskUserQuestion` with header "Scenarios" **before** generating per-condition tables:
+
+1. **All combinations** — see [references/combination-all.md](references/combination-all.md)
+2. **Pairwise** — see [references/combination-pairwise.md](references/combination-pairwise.md)
+3. **Business-driven** — see [references/combination-business.md](references/combination-business.md)
+4. **Sequential (short-circuit)** — see [references/combination-sequential.md](references/combination-sequential.md)
+
+If the user already specified a method in their prompt (e.g. "use sequential"), skip this step and proceed directly.
+
+For single-condition requirements, skip this step.
+
+### Step 3: Per-Condition Loop
 
 For each condition, follow the assigned technique's reference:
 - **BVA** → [references/bva.md](references/bva.md): precision check, single-bound check, number line diagram, 6 boundary values
@@ -59,22 +72,15 @@ For each condition, follow the assigned technique's reference:
 
 Generate **Unit Test Cases** (TC-01/ST-01) for each condition.
 
-### Step 3: Per-Condition Business Test Data
+### Step 4: Per-Condition Business Test Data
 
 For each condition, generate **Business Test Cases** (BT-01) with realistic valid AND invalid values. See [references/common.md](references/common.md) for business test data rules.
 
-### Step 4: Combined Test Scenarios (Decision Table)
+### Step 5: Combined Test Scenarios (Decision Table)
 
-**When there are 2+ conditions**, ask the user which combination method to use via `AskUserQuestion` with header "Scenarios":
+**When there are 2+ conditions**, generate the combined test scenarios using the method chosen in Step 2. See the appropriate reference file for rules.
 
-1. **All combinations** — see [references/combination-all.md](references/combination-all.md)
-2. **Pairwise** — see [references/combination-pairwise.md](references/combination-pairwise.md)
-3. **Business-driven** — see [references/combination-business.md](references/combination-business.md)
-4. **Sequential (short-circuit)** — see [references/combination-sequential.md](references/combination-sequential.md)
-
-For single-condition requirements, skip this step.
-
-### Step 5: Offer to Save Results
+### Step 6: Offer to Save Results
 
 After generating all test cases, add at the end (as text, NOT `AskUserQuestion`):
 
@@ -90,9 +96,10 @@ For worked examples, see [references/examples.md](references/examples.md).
 **Output pattern for multiple conditions:**
 
 1. **Input Analysis** — list all conditions, note technique (BVA / EP / STT)
-2. **Per-condition sections** — diagram + Unit Test Cases + Business Test Cases
-3. **Test Scenarios** — combined decision table (after user selects method)
-4. **Offer to save**
+2. **Ask for combination method** (AskUserQuestion) — then continue after user responds
+3. **Per-condition sections** — diagram + Unit Test Cases + Business Test Cases
+4. **Test Scenarios** — combined decision table
+5. **Offer to save**
 
 **Output pattern for single condition:**
 

@@ -3,7 +3,11 @@
 ## test-engineer skill
 
 ### In Progress
-- [ ] Restructure workflow: per-condition BVA loop → combined test scenarios decision table
+- [x] Restructure workflow: per-condition BVA loop → combined test scenarios decision table
+  - Moved AskUserQuestion (combination method) to Step 2, before per-condition loop
+  - Fixed sequential nominal value rule (explicit: never vary conditions after failure point)
+  - Fixed sequential validation order: text presentation of 2-3 orders instead of AskUserQuestion
+  - Evals 19, 22, 23, 24 targeted; full eval run pending (usage limit resets Mar 31)
 
 ### Future
 - [ ] Decision table method: add pairwise combination option to reduce scenario count for 3+ conditions
