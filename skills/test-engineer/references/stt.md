@@ -68,7 +68,134 @@ After confirmation: add the confirmed hidden states to the full states list and 
 
 2. **Identify all valid transitions** — which state-to-state moves are allowed
 
-3. **Identify terminal states** — states with no outgoing transitions
+### Transition Identification (3 phases)
+
+#### Phase 1 — Derive transitions from requirement + domain knowledge
+
+Using the confirmed states from Step 1 and the identified domain, propose all plausible transitions. Do **not** limit to only what the requirement explicitly states — domain knowledge fills gaps the author assumed were obvious.
+
+Present the proposal as a table:
+
+```
+📋 Proposed Transitions
+
+Based on the confirmed states and [domain] domain knowledge:
+
+| # | From State | Action / Event | To State | Source |
+|---|---|---|---|---|
+| 1 | New | Customer confirms | Confirmed | Requirement |
+| 2 | Confirmed | Warehouse ships | Shipped | Requirement |
+| 3 | Shipped | Customer receives | Delivered | Requirement |
+| 4 | New | Customer cancels | Cancelled | Requirement |
+| 5 | Confirmed | Customer cancels | Cancelled | Domain knowledge |
+| 6 | Shipped | Customer requests return | Returned | Domain knowledge (hidden state) |
+| 7 | New | Auto-expire (no action within 24h) | Expired | Domain knowledge (hidden state) |
+
+Source key:
+- "Requirement" = explicitly stated
+- "Domain knowledge" = implied by the business domain
+- "Domain knowledge (hidden state)" = transition involving a hidden state confirmed in Step 1
+```
+
+Then call `AskUserQuestion` to confirm: present each domain-knowledge transition (non-requirement ones) and ask the user to approve or remove them. Requirement transitions are always included.
+
+#### Domain Transition Reference
+
+Use this as a starting point when proposing transitions. Add or remove based on the confirmed states from Step 1.
+
+**Order / Fulfillment**
+
+| From | Action | To | Notes |
+|---|---|---|---|
+| New | Payment initiated | Processing | if payment step exists |
+| Processing | Payment succeeds | Confirmed | |
+| Processing | Payment fails | Payment Failed | retry path |
+| Payment Failed | Retry | Processing | |
+| Payment Failed | Max retries exceeded | Cancelled | auto-cancel |
+| Confirmed | Ship | Shipped | |
+| Confirmed | Cancel | Cancelled | pre-shipment cancel |
+| Shipped | Deliver | Delivered | |
+| Shipped | Return request | Returned | post-ship return |
+| Delivered | Return within window | Returned | post-delivery return |
+| Any active state | Timeout | Expired | if time-based rule |
+
+**Document / Approval**
+
+| From | Action | To | Notes |
+|---|---|---|---|
+| Draft | Submit | Submitted | |
+| Draft | Withdraw | Withdrawn | before submission |
+| Submitted | Begin review | Under Review | |
+| Submitted | Withdraw | Withdrawn | after submission |
+| Under Review | Approve | Approved | |
+| Under Review | Reject | Rejected | |
+| Under Review | Put on hold | On Hold | |
+| On Hold | Resume | Under Review | hold lifted |
+| Rejected | Revise | Draft | rework cycle |
+| Approved | Publish | Published | |
+| Published | Archive | Archived | end of life |
+| Published | Supersede | Superseded | new version replaces |
+
+**User Account**
+
+| From | Action | To | Notes |
+|---|---|---|---|
+| Pending Verification | Verify email | Active | |
+| Pending Verification | Timeout | Expired | link expired |
+| Active | Too many failed logins | Locked | security |
+| Active | Policy violation | Suspended | admin action |
+| Active | User closes account | Deactivated | |
+| Locked | Admin unlocks | Active | |
+| Suspended | Admin reinstates | Active | |
+
+**Task / Ticket**
+
+| From | Action | To | Notes |
+|---|---|---|---|
+| Open | Assign | In Progress | |
+| In Progress | Block | Blocked | |
+| Blocked | Unblock | In Progress | |
+| In Progress | Resolve | Resolved | |
+| Resolved | Reopen | In Progress | found again |
+| Resolved | Close | Closed | |
+| Any | Mark duplicate | Duplicate | |
+
+**Booking / Reservation**
+
+| From | Action | To | Notes |
+|---|---|---|---|
+| Requested | Add to waitlist | Waitlisted | no capacity |
+| Waitlisted | Slot opens | Confirmed | |
+| Confirmed | Check in | Checked In | |
+| Confirmed | No-show | Expired | missed appointment |
+| Confirmed | Cancel | Cancelled | |
+
+---
+
+#### Phase 2 — Cross-domain gap check
+
+After the user confirms the transition list in Phase 1, review the transitions that were **not included** from the domain reference above. Present only those that are plausible given the confirmed states — these are potential requirement gaps.
+
+```
+⚠️ Possible Missing Transitions (Requirement Gap Check)
+
+These transitions are common in [domain] but were not in the confirmed list.
+Please confirm whether each is out of scope, or should be added before development:
+
+| # | From | Action | To | Business scenario | Include? |
+|---|---|---|---|---|---|
+| 1 | Delivered | Return within 7 days | Returned | Customer changes mind after receiving order | ? |
+| 2 | Confirmed | Auto-expire if not shipped in 30 days | Expired | Seller fails to fulfill on time | ? |
+| 3 | Payment Failed | Retry payment | Processing | Customer updates payment method after failure | ? |
+```
+
+Call `AskUserQuestion` for each unconfirmed plausible transition:
+- If user says **yes** → add to the transition list
+- If user says **no / out of scope** → note as explicitly excluded (document the decision, it can become an invalid transition test case)
+
+After gap check is complete, proceed to Step 3 with the full confirmed + added transition list.
+
+3. **Identify terminal states** — states with no outgoing transitions (discovered from the confirmed transition map — any state with no outgoing arrow is terminal by definition)
 
 ## State Transition Diagram
 

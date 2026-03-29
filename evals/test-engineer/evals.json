@@ -467,6 +467,31 @@
         "The output presents detected hidden states in a structured format showing what each state is and why it may exist",
         "The output calls AskUserQuestion (or equivalent) to let the user confirm which hidden states to include before proceeding to the transition diagram"
       ]
+    },
+    {
+      "id": 40,
+      "prompt": "Order management workflow:\n- New → Confirmed (customer confirms)\n- Confirmed → Shipped (warehouse ships)\n- Shipped → Delivered (customer receives)\n- New → Cancelled (customer cancels)\n\nHidden states already confirmed: Expired, Payment Failed.\nGenerate transitions.",
+      "expected_output": "The skill proposes transitions derived from both the requirement and order/fulfillment domain knowledge, labels each by source (Requirement vs Domain knowledge), asks user to confirm domain-knowledge transitions, then runs a gap check to surface plausible transitions that were not included.",
+      "files": [],
+      "assertions": [
+        "The output includes all 4 requirement transitions (New→Confirmed, Confirmed→Shipped, Shipped→Delivered, New→Cancelled)",
+        "The output proposes additional transitions from order domain knowledge (e.g. Confirmed→Cancelled, Shipped→Returned, state→Expired, Payment Failed→Processing retry)",
+        "Each proposed transition is labeled with its source: 'Requirement' or 'Domain knowledge'",
+        "The output asks the user to confirm which domain-knowledge transitions to include (AskUserQuestion or equivalent)",
+        "After confirmation, the output runs a gap check that presents transitions common in order/fulfillment domain that were not confirmed, asking if they are out of scope or missing"
+      ]
+    },
+    {
+      "id": 41,
+      "prompt": "Document approval flow with confirmed states: Draft, Submitted, Under Review, Approved, Rejected, Published, On Hold, Withdrawn.\nRequirement transitions:\n- Draft → Submitted\n- Submitted → Under Review\n- Under Review → Approved\n- Under Review → Rejected\n- Approved → Published\n\nGenerate transitions and run gap check.",
+      "expected_output": "The skill proposes additional domain-knowledge transitions (Rejected→Draft rework cycle, On Hold path, Withdrawn paths, Published→Archived), asks user to confirm, then runs a gap check for transitions common in document/approval domain that were not included.",
+      "files": [],
+      "assertions": [
+        "The output includes all 5 requirement transitions",
+        "The output proposes domain-knowledge transitions including at least: Rejected→Draft (rework), Under Review→On Hold, and a withdrawal path",
+        "The output distinguishes requirement transitions from domain-knowledge transitions in the proposal table",
+        "The output runs a gap check after confirmation, surfacing plausible transitions not yet confirmed (e.g. Published→Archived, Published→Superseded) and asking whether each is out of scope or missing from the requirement"
+      ]
     }
   ]
 }
