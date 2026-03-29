@@ -475,9 +475,10 @@
       "files": [],
       "assertions": [
         "The output includes all 4 requirement transitions (New→Confirmed, Confirmed→Shipped, Shipped→Delivered, New→Cancelled)",
+        "The output shows a state diagram in Phase 1 before the proposal table, using solid arrows (──►) for requirement transitions and dashed arrows (- - ►) with [?] labels for domain knowledge suggestions",
         "The output proposes additional transitions from order domain knowledge (e.g. Confirmed→Cancelled, Shipped→Returned, state→Expired, Payment Failed→Processing retry)",
-        "Each proposed transition is labeled with its source: 'Requirement' or 'Domain knowledge'",
-        "The output asks the user to confirm which domain-knowledge transitions to include (AskUserQuestion or equivalent)",
+        "Each proposed transition is labeled with its source: 'Requirement' or 'Domain knowledge [?]'",
+        "The output asks the user to confirm which [?] domain-knowledge transitions to include (AskUserQuestion or equivalent)",
         "After confirmation, the output runs a gap check that presents transitions common in order/fulfillment domain that were not confirmed, asking if they are out of scope or missing"
       ]
     },
@@ -491,6 +492,18 @@
         "The output proposes domain-knowledge transitions including at least: Rejected→Draft (rework), Under Review→On Hold, and a withdrawal path",
         "The output distinguishes requirement transitions from domain-knowledge transitions in the proposal table",
         "The output runs a gap check after confirmation, surfacing plausible transitions not yet confirmed (e.g. Published→Archived, Published→Superseded) and asking whether each is out of scope or missing from the requirement"
+      ]
+    },
+    {
+      "id": 42,
+      "prompt": "Order management: states New, Confirmed, Shipped, Delivered, Cancelled. Confirmed transitions: New→Confirmed, Confirmed→Shipped, Shipped→Delivered, New→Cancelled, Confirmed→Cancelled. Generate the state transition table.",
+      "expected_output": "A pivot matrix where rows are From States, columns are To States, and cells contain the action/event name. Cells with '-' indicate explicitly blocked invalid transitions. Terminal states have all-empty or all-'-' rows.",
+      "files": [],
+      "assertions": [
+        "The transition table is a pivot matrix with From States as rows and To States as columns",
+        "Each non-empty cell contains the action/event name (e.g. 'Customer confirms', 'Warehouse ships') not just 'Valid'",
+        "Invalid transitions (e.g. Delivered→Confirmed, Cancelled→Shipped) are shown as '-' in the appropriate cells",
+        "Terminal states (Delivered, Cancelled) are identifiable as rows where all cells are empty or '-'"
       ]
     }
   ]

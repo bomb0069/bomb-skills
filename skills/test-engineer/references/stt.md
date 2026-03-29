@@ -74,30 +74,46 @@ After confirmation: add the confirmed hidden states to the full states list and 
 
 Using the confirmed states from Step 1 and the identified domain, propose all plausible transitions. Do **not** limit to only what the requirement explicitly states — domain knowledge fills gaps the author assumed were obvious.
 
-Present the proposal as a table:
+**Step 1a — Show the proposal diagram first**, using different arrow styles to distinguish sources:
+- Solid arrow `──►` = from the requirement
+- Dashed arrow `- - ►` = suggested from domain knowledge
+- Label each dashed arrow with `[?]` to mark it as pending confirmation
 
 ```
-📋 Proposed Transitions
+📋 Proposed Transition Diagram
 
-Based on the confirmed states and [domain] domain knowledge:
+Solid arrows (──►) = from requirement   Dashed arrows (- - ►) = domain knowledge suggestion [?]
 
+                    customer confirms          warehouse ships           customer receives
+  [New] ──────────────────────────► [Confirmed] ────────────► [Shipped] ──────────────► [Delivered]
+    │                                    │                        │
+    │ customer cancels                   │ customer cancels [?]   │ return request [?]
+    ▼                                    ▼                        ▼
+[Cancelled] ◄────────────────────── [Cancelled]            [Returned]
+    ▲
+    │ auto-expire (no action 24h) [?]
+  [New]
+    │
+    └─ - - - - - - - - - - - - - - - - ► [Expired]
+```
+
+**Step 1b — Show the proposal table** to accompany the diagram:
+
+```
 | # | From State | Action / Event | To State | Source |
 |---|---|---|---|---|
 | 1 | New | Customer confirms | Confirmed | Requirement |
 | 2 | Confirmed | Warehouse ships | Shipped | Requirement |
 | 3 | Shipped | Customer receives | Delivered | Requirement |
 | 4 | New | Customer cancels | Cancelled | Requirement |
-| 5 | Confirmed | Customer cancels | Cancelled | Domain knowledge |
-| 6 | Shipped | Customer requests return | Returned | Domain knowledge (hidden state) |
-| 7 | New | Auto-expire (no action within 24h) | Expired | Domain knowledge (hidden state) |
+| 5 | Confirmed | Customer cancels | Cancelled | Domain knowledge [?] |
+| 6 | Shipped | Customer requests return | Returned | Domain knowledge [?] |
+| 7 | New | Auto-expire (no action within 24h) | Expired | Domain knowledge [?] |
 
-Source key:
-- "Requirement" = explicitly stated
-- "Domain knowledge" = implied by the business domain
-- "Domain knowledge (hidden state)" = transition involving a hidden state confirmed in Step 1
+[?] = suggested — please confirm whether to include
 ```
 
-Then call `AskUserQuestion` to confirm: present each domain-knowledge transition (non-requirement ones) and ask the user to approve or remove them. Requirement transitions are always included.
+Then call `AskUserQuestion` to confirm: present each `[?]` transition and ask the user to approve or remove. Requirement transitions are always included. After confirmation, redraw the diagram with only confirmed transitions (all solid arrows, no `[?]` labels).
 
 #### Domain Transition Reference
 
@@ -199,7 +215,9 @@ After gap check is complete, proceed to Step 3 with the full confirmed + added t
 
 ## State Transition Diagram
 
-Draw a state diagram in a code block:
+The final state diagram is produced at the end of Phase 1 (after user confirms all transitions). All arrows are solid at that point — no `[?]` labels remain.
+
+Draw the diagram in a code block using the format below. Show the action/event label on every arrow.
 
 ```
 {Workflow name}
@@ -207,11 +225,10 @@ Draw a state diagram in a code block:
                           {action}              {action}
   [Start] ──────────► [{State A}] ──────────► [{State B}] ──────► [{Terminal}]
                            │                       │
-                       {action}                    │ (no transition)
+                       {action}                    │ (no outgoing — terminal)
                            ▼                       │
                       [{State C}] ◄────────────────┘
-                           │                  {action}
-                       (terminal)
+                                         {action}
 ```
 
 For branching paths (e.g., Approved OR Rejected):
@@ -221,17 +238,28 @@ For branching paths (e.g., Approved OR Rejected):
                                     └─── Reject ───► [Rejected] ──► [Draft] (cycle)
 ```
 
-## State Transition Table
+## State Transition Table (Pivot Matrix)
 
-Build a matrix of Current State × Action → Next State:
+Build a pivot matrix where **rows = From State**, **columns = To State**, and **cells = Action/Event** that causes the transition. Use `-` for transitions that are explicitly invalid (tested as invalid transition test cases). Leave the cell blank (``) if the transition is simply not applicable.
 
-| Current State | Action | Next State | Valid? |
-|---|---|---|---|
-| New | Confirm | Confirmed | Valid |
-| New | Cancel | Cancelled | Valid |
-| Confirmed | Ship | Shipped | Valid |
-| Shipped | Confirm | - | Invalid |
-| Delivered | Cancel | - | Invalid |
+```
+| From \ To   | Confirmed      | Shipped        | Delivered        | Cancelled          | Returned           | Expired            |
+|-------------|----------------|----------------|------------------|--------------------|--------------------|--------------------|
+| New         | Customer confirms |              |                  | Customer cancels   |                    | Auto-expire (24h)  |
+| Confirmed   |                | Warehouse ships |                 | Customer cancels   |                    |                    |
+| Shipped     |                |                | Customer receives |                   | Return request     |                    |
+| Delivered   |                |                |                  | -                  | Return within window |                  |
+| Cancelled   |                |                |                  |                    |                    |                    |
+| Returned    |                |                |                  |                    |                    |                    |
+| Expired     |                |                |                  |                    |                    |                    |
+```
+
+**Pivot matrix rules:**
+- Each cell contains the **action/event name** that triggers the transition (keep it short)
+- `-` = transition explicitly blocked (system should reject it) — generates an invalid transition test case
+- Empty = not applicable (no business reason to attempt)
+- The diagonal (From = To) is always empty (a state cannot transition to itself)
+- Terminal states = rows where every cell is empty or `-`
 
 ## Test Case Generation
 
