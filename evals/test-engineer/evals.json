@@ -443,7 +443,30 @@
         "Each Test Scenarios row includes a Business Scenario narrative describing the full business process for that combination",
         "The Expected Output column describes the business outcome (e.g. 'Raise applied — salary increases by 7%') not just 'Valid - accepted'"
       ]
+    },
+    {
+      "id": 38,
+      "prompt": "Order management workflow:\n- New order created\n- Customer confirms order\n- Order is shipped\n- Customer receives delivery\n- Order can be cancelled\n\nGenerate state transition test cases.",
+      "expected_output": "The skill detects hidden states implied by the order/fulfillment domain (e.g. Expired, Payment Failed, Processing, Returned) and asks the user to confirm which to include before building the transition table.",
+      "files": [],
+      "assertions": [
+        "The output lists the explicit states from the requirement (New, Confirmed, Shipped, Delivered, Cancelled)",
+        "The output detects at least 2 hidden states implied by order/fulfillment domain knowledge that are NOT mentioned in the requirement",
+        "The output explains why each hidden state may exist (domain signal or business reasoning)",
+        "The output asks the user to confirm which hidden states to include before building the state diagram and transition table"
+      ]
+    },
+    {
+      "id": 39,
+      "prompt": "Document approval flow:\n- Author writes a document (Draft)\n- Submitted for review\n- Manager reviews and either approves or rejects\n- Approved documents are published\n\nGenerate state transition test cases.",
+      "expected_output": "The skill detects hidden states implied by the document/approval domain (e.g. On Hold, Withdrawn, Archived, Superseded) and asks the user to confirm which to include before building the transition table.",
+      "files": [],
+      "assertions": [
+        "The output lists the explicit states from the requirement (Draft, Submitted, Under Review, Approved, Rejected, Published)",
+        "The output detects at least 2 hidden states implied by document/approval domain knowledge (such as On Hold, Withdrawn, Archived, or Superseded)",
+        "The output presents detected hidden states in a structured format showing what each state is and why it may exist",
+        "The output calls AskUserQuestion (or equivalent) to let the user confirm which hidden states to include before proceeding to the transition diagram"
+      ]
     }
-  ]
   ]
 }
