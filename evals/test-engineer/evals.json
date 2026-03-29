@@ -340,45 +340,56 @@
     {
       "id": 32,
       "prompt": "Product pricing: base price 100-50000 (integer, Thai Baht) AND bonus rate (10%, 15%, 20%). New price = base price + (base price × bonus rate). The new price must also be a valid product price (integer, Thai Baht). Generate test cases.",
-      "expected_output": "The skill detects that the calculated new price can produce fractional values (e.g. base 333 × 10% = 333.3 → new price 366.3) which violates the integer constraint on new price, then asks the user about the missing rounding rule before generating final test cases.",
+      "expected_output": "The skill first asks if New Price (same domain as Base Price) should inherit the Base Price constraint 100-50000, then detects precision gap, then asks about rounding rule.",
       "files": [],
       "turns": [
         {
           "respond": "round up (ceiling)",
           "assertions": [
-            "The output regenerates the Test Scenarios table with two output columns: 'Calculated: New Price' (raw formula result) and 'Expected: New Price' (adjusted value after ceiling rule)",
-            "The 'Calculated: New Price' column shows the raw decimal result (e.g. 366.3) and the 'Expected: New Price' column shows the ceiled integer (e.g. 367)",
+            "All scenarios are in ONE unified test scenarios table — not split across multiple tables",
+            "The single table has 'Calculated: New Price' and 'Expected: New Price' columns together with all input columns",
+            "The 'Calculated: New Price' column shows the raw decimal result and 'Expected: New Price' shows the ceiled integer",
             "The rounding rule is added as a [Hidden] condition in the Input Analysis section",
-            "Rows where the calculated value is already a whole number still show both columns for consistency"
+            "Rows where no rounding was needed still show both Calculated and Expected columns"
           ]
         }
       ],
       "assertions": [
-        "The output detects a requirement gap: the new price calculation can produce a decimal result that violates the integer constraint",
-        "The output flags the gap with a clear warning or notice (e.g. '⚠️ Requirement Gap' or 'Hidden Requirement')",
-        "The output asks the user about the missing rounding rule (e.g. round up, round down, round to nearest, truncate)"
+        "The output first checks domain overlap: New Price is the same type as Base Price (Thai Baht price) and asks whether New Price should inherit the 100-50000 constraint",
+        "The output detects a precision gap: new price calculation can produce decimal results that violate the integer constraint",
+        "The output flags the gap with a warning notice and asks about the rounding rule (round up, round down, round to nearest, truncate)"
       ]
     },
     {
       "id": 33,
       "prompt": "Insurance premium: base premium 1000-100000 (integer, Thai Baht) AND risk level (Low: -10%, Medium: +0%, High: +20%). Final premium = base × (1 + rate). Final premium must be a valid premium amount (integer, Thai Baht, minimum 500). Generate test cases.",
-      "expected_output": "The skill detects that combining base premium with risk rates can produce fractional results requiring rounding, and asks about the rounding rule.",
+      "expected_output": "The skill detects that combining base premium with risk rates can produce fractional results requiring rounding, and asks about the rounding rule. All scenarios appear in one unified table.",
       "files": [],
       "assertions": [
         "The output detects a requirement gap where the calculated final premium can be fractional",
-        "The output asks the user about the missing rounding or adjustment rule for the final premium"
+        "The output asks the user about the missing rounding or adjustment rule for the final premium",
+        "All test scenarios are presented in a single unified table with Calculated and Expected columns"
       ]
     },
     {
       "id": 34,
       "prompt": "Product pricing: base price 100-50000 (integer, Thai Baht) AND bonus rate (10%, 15%, 20%). New price = base price × (1 + bonus rate). New price must also be a valid product price (integer, Thai Baht, 100-50000). Generate test cases.",
-      "expected_output": "The skill detects a Condition Conflict: base price max is 50000, but new price formula at max base (50000 × 1.20 = 60000) exceeds that same 50000 ceiling. The skill names the conflicting condition ('base price' range 100-50000) and asks the user with business-context-aware suggestions about how to resolve the conflict.",
+      "expected_output": "The skill first asks (Domain Inheritance Check) whether New Price inherits the Base Price constraint 100-50000 before computing scenarios. After confirmation it detects a Condition Conflict at max base × max rate = 60000, names the conflicting condition, and asks with business-context-aware suggestions.",
       "files": [],
+      "turns": [
+        {
+          "respond": "Yes, New Price inherits Base Price constraint 100-50000",
+          "assertions": [
+            "The output detects a condition conflict: the calculated new price (e.g. 60000) violates the inherited 100-50000 range",
+            "The output names the conflicting condition explicitly (e.g. 'Base Price condition 100-50000')",
+            "The output provides business-context-aware suggestions explaining the business reason for each option (separate ceiling, cap, reject, tiered rule)",
+            "The output asks via AskUserQuestion with a header naming both fields (e.g. 'Condition Conflict: New Price vs Base Price')"
+          ]
+        }
+      ],
       "assertions": [
-        "The output detects a condition conflict: the calculated new price (e.g. 60000) violates the same 100-50000 range that applies to base price",
-        "The output names the conflicting condition explicitly (e.g. 'base price condition' or 'product price range 100-50000')",
-        "The output provides business-context-aware suggestions — not just generic options — explaining why each option matters (e.g. separate ceiling for new price, cap at 50000, reject the combination, tiered rate)",
-        "The output asks via AskUserQuestion with a header that names both conflicting fields (e.g. 'Condition Conflict: New Price vs Base Price')"
+        "The output performs a Domain Inheritance Check before computing scenarios: detects that New Price shares the same domain as Base Price (Thai Baht price)",
+        "The output asks the user whether New Price should inherit the Base Price constraint (100-50000) before generating test cases"
       ]
     }
   ]
