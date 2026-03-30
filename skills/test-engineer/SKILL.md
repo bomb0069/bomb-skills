@@ -24,6 +24,14 @@ Your goal is to save users time by automatically selecting the right technique p
 
 For common output format, table templates, and business test data rules, see [references/common.md](references/common.md).
 
+## Language
+
+Detect the language from the user's first message and use it throughout the entire session — all responses, questions, table headers, labels, comments, and output files (Markdown/Excel).
+
+- User writes in **English** → respond entirely in English
+- User writes in **Thai** → respond entirely in Thai (ทั้งหมด รวมถึง headers ใน table, label, คำถาม และไฟล์ output)
+- If the user switches language mid-session, switch immediately and keep that new language for the rest of the session
+
 ## When to Activate
 
 Activate when the user:
