@@ -1,4 +1,6 @@
-# Test Engineer Skill — Workflow Diagram
+# Test Engineer Skill — Workflow
+
+## Mermaid Diagram
 
 ```mermaid
 flowchart TD
@@ -65,4 +67,227 @@ flowchart TD
     T -->|Both| W[.xlsx + .md]
     T -->|Skip| X
     U & V & W --> X([Done])
+```
+
+---
+
+## Text Diagram
+
+### Overview
+
+```
+User provides requirement
+         │
+         ▼
+┌─────────────────────────────────┐
+│  Step 1: Analyze & count        │
+│  conditions — assign C1, C2...  │
+└─────────────────────────────────┘
+         │
+         ▼
+  ┌──────────────────┐
+  │  Input type?     │
+  └──────────────────┘
+    │        │        │
+    ▼        ▼        ▼
+  BVA        EP      STT
+```
+
+### BVA — Precision Check
+
+```
+BVA condition
+      │
+      ▼
+┌─────────────────────┐
+│  Precision clear?   │
+└─────────────────────┘
+  │           │           │           │
+  ▼           ▼           ▼           ▼
+Age /      Money —     Percentage   Clear
+Duration   no decimal  ambiguous      │
+  field    stated          │          │
+  │            │           ▼          │
+  ▼            ▼     Ask: integer     │
+Ask:        Ask:     or decimal?      │
+integer or  decimal      │            │
+date-calc?  precision    │            │
+  │            │          │           │
+  └────────────┴──────────┴───────────┘
+                          │
+                          ▼
+                      BVA ready
+```
+
+**Duration fields** = tenure, period, term, service years, subscription length, contract duration, seniority, probation
+
+When date-calculated: use **direct input** (hire date / start date) + **indirect input** (reference date) + **Calculated** column. Step = 1 day.
+
+### EP — Generic Partition Check
+
+```
+EP condition
+      │
+      ▼
+┌──────────────────────────────────────┐
+│  Any generic label?                  │
+│  ทั่วไป / อื่น ๆ / Others /          │
+│  Remaining / Miscellaneous / Else... │
+└──────────────────────────────────────┘
+        │                   │
+       Yes                  No
+        │                   │
+        ▼                   ▼
+Ask: one class          EP ready
+or split?
+Suggest domain
+examples
+        │
+   ┌────┴────┐
+   ▼         ▼
+Split      Single class —
+into       pick one
+sub-groups representative
+   │         │
+   ▼         ▼
+Re-analyze  EP ready
+(back to
+ Step 1)
+```
+
+### Step 2: Combination Method
+
+```
+All conditions analyzed
+         │
+         ▼
+┌────────────────────┐
+│  How many          │
+│  conditions?       │
+└────────────────────┘
+    │           │
+    ▼           ▼
+  Only 1      2 or more
+    │               │
+    │       ┌───────┴───────────┐
+    │       ▼                   ▼
+    │   All EP?          Any STT or
+    │       │            mixed BVA/EP?
+    │       ▼                   │
+    │  All-EP combined          ▼
+    │  partition diagram   Ask combination
+    │       │              method:
+    │       │              1. STT (if STT exists)
+    │       │              2. All combinations
+    │       │              3. Pairwise
+    │       │              4. Business-driven
+    │       │              5. Sequential
+    │       │                   │
+    └───────┴───────────────────┘
+                    │
+                    ▼
+           Proceed to Step 3
+```
+
+### Step 3–4: Per-Condition Loop
+
+```
+For each condition (C1, C2, C3...):
+         │
+         ▼
+┌──────────────────────────────────┐
+│  Show diagram                    │
+│  BVA → number line diagram       │
+│  EP  → partition diagram         │
+│  STT → state diagram             │
+└──────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────┐
+│  Unit Test Cases                 │
+│  TC-01, TC-02... / ST-01...      │
+│  BVA: 6 boundary values          │
+│  EP: one case per partition      │
+│  STT: valid + invalid transitions│
+└──────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────┐
+│  Business Test Cases  BT-01...   │
+│  Realistic valid AND invalid     │
+│  values from the business domain │
+└──────────────────────────────────┘
+```
+
+### Step 5: Combined Test Scenarios
+
+```
+2 or more conditions?
+         │
+        Yes
+         │
+         ▼
+┌──────────────────────────────────┐
+│  Test Scenarios  TS-01, TS-02... │
+│  Decision table combining all    │
+│  conditions per chosen method    │
+│                                  │
+│  Columns:                        │
+│  ID | Scenario Name |            │
+│  Business Scenario |             │
+│  {condition columns} |           │
+│  Covers | Expected Output        │
+└──────────────────────────────────┘
+```
+
+### Step 5b: Gap Analysis
+
+```
+Does the requirement have
+a calculated output?
+         │
+    ┌────┴────┐
+    ▼         ▼
+   Yes        No — skip
+    │
+    ▼
+Compute output for
+each scenario row
+    │
+    ▼
+┌──────────────────┐
+│  Gap found?      │
+└──────────────────┘
+    │         │
+   Yes        No
+    │
+    ▼
+Ask hidden rule
+via AskUserQuestion
+    │
+    ▼
+Add [Hidden] condition
+Update affected test cases
+```
+
+### Step 6: Save Results
+
+```
+Ask how to save
+(AskUserQuestion)
+         │
+   ┌─────┼──────┬──────┐
+   ▼     ▼      ▼      ▼
+Excel  Markdown Both  Skip
+   │     │      │      │
+   ▼     ▼      ▼      │
+.xlsx   .md  .xlsx      │
+Python  save  + .md     │
+script  to    both      │
+        test-           │
+        cases/          │
+   └─────┴──────┴───────┘
+                │
+                ▼
+              Done
 ```
