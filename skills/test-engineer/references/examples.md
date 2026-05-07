@@ -1,5 +1,31 @@
 # test-engineer Skill — Examples
 
+## Example: Generic Partition Label — Ask to Clarify
+
+**User prompt**: "Employee type field: Full-time, Part-time, ทั่วไป. This is for a payroll system."
+
+**Output**:
+
+**Input Analysis**
+- Field: Employee Type
+- Type: EP (enum/dropdown)
+- Partitions found: Full-time, Part-time, ทั่วไป
+
+I found a partition labelled **"ทั่วไป"** — this is a broad label that may bundle several distinct employee types together.
+
+In a payroll system, "ทั่วไป" could include values such as:
+- **Contractor** (จ้างเหมา) — typically paid differently from salaried staff
+- **Intern** (นักศึกษาฝึกงาน) — may have different tax or benefits rules
+- **Outsource** (outsource) — may be processed through a third-party vendor
+
+*[Then call `AskUserQuestion` with header "ทั่วไป คือ?", question "กลุ่ม 'ทั่วไป' ในระบบ payroll นี้หมายถึงพนักงานประเภทไหนบ้าง?", and options: "รวมทุกประเภทที่เหลือ" (Contractor, Intern, Outsource ถือเป็น partition เดียว ใช้ตัวแทนค่าเดียว), "แยกเป็น partition ย่อย" (แต่ละประเภทมีกฎ payroll ต่างกัน ควรแยกทดสอบ)]*
+
+---
+
+*(If user answers "แยกเป็น partition ย่อย" → re-run Step 1 with Contractor / Intern / Outsource as separate partitions)*
+
+*(If user answers "รวมทุกประเภทที่เหลือ" → treat "ทั่วไป" as one partition, pick one representative value e.g. "Contractor" for the test case)*
+
 ## Example: Basic Numeric BVA with Business Test Data
 
 **User prompt**: "Age field accepts 18 to 60 (integer). This is for a car insurance application targeting working adults."

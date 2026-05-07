@@ -24,6 +24,21 @@ Single EP condition:
 
 Multiple EP conditions → see [references/combination-all.md](combination-all.md) (All-EP Combined Partition Diagram section).
 
+## Generic Partition Detection
+
+Before generating test cases, scan all partition names for **broad/generic labels** — names that bundle multiple unstated values rather than naming a specific value. Common signals:
+
+- "ทั่วไป", "อื่น ๆ", "กลุ่มที่เหลือ", "นอกนั้น", "อื่น"
+- "General", "Others", "Other", "Remaining", "Miscellaneous", "Default", "Else"
+- Any label ending with "etc." or "…"
+
+When detected, **stop and ask via `AskUserQuestion` before generating test cases.** In the question:
+1. State which partition name triggered the question
+2. Suggest 2–4 concrete examples drawn from the business domain in the prompt (e.g., for an HR system: "Contractor", "Part-time", "Executive"; for a banking system: "Savings Account", "Current Account")
+3. Ask whether those examples are all in this group, or if some should be separate partitions
+
+If the user confirms all examples belong to one group, treat the partition as a single equivalence class and pick one representative value. If the user identifies distinct sub-groups, split them into separate partitions and re-run from Step 1.
+
 ## Steps
 
 1. **Identify valid partitions** — each allowed value or class of valid inputs
