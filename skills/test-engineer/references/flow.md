@@ -62,7 +62,61 @@
 
 ---
 
-## Mermaid Diagram
+## Mermaid Summary
+
+```mermaid
+flowchart TD
+    START([User provides requirement]) --> S1
+
+    S1[Step 1: Analyze & count conditions\nAssign C1, C2, C3...]
+
+    S1 --> BVA[BVA\nNumeric / Time range]
+    S1 --> EP[EP\nText / Dropdown / Enum / Boolean]
+    S1 --> STT[STT\nStatus / Workflow]
+
+    BVA --> BVA_C{Clarify?}
+    BVA_C -->|Age / Duration| BVA_Q[Ask: integer or date-calculated?]
+    BVA_C -->|Money| BVA_M[Ask: decimal precision?]
+    BVA_C -->|Clear| READY
+
+    EP --> EP_C{Generic label?\nทั่วไป / Others...}
+    EP_C -->|Yes| EP_Q[Ask: one class or split?\nSuggest domain examples]
+    EP_C -->|No| READY
+    EP_Q -->|Split| S1
+    EP_Q -->|Single class| READY
+
+    STT --> READY
+
+    BVA_Q --> READY
+    BVA_M --> READY
+
+    READY[All conditions ready] --> CNT{How many\nconditions?}
+
+    CNT -->|1| S3
+    CNT -->|2+ all EP| ALLEP[All-EP combined\npartition diagram]
+    CNT -->|2+ mixed / STT| METHOD[Ask combination method\nAll / Pairwise / Business\nSequential / STT]
+    ALLEP --> S3
+    METHOD --> S3
+
+    S3[Step 3: Per-condition loop\nDiagram + Unit Test Cases TC-xx / ST-xx]
+    S3 --> S4[Step 4: Business Test Cases BT-xx\nRealistic valid AND invalid values]
+    S4 --> S5{2+ conditions?}
+    S5 -->|Yes| TS[Step 5: Combined Test Scenarios TS-xx\nDecision table across all conditions]
+    S5 -->|No| GAP_Q
+    TS --> GAP_Q
+
+    GAP_Q{Calculated output?}
+    GAP_Q -->|Yes| S5B[Step 5b: Gap Analysis\nCompute output → flag hidden rules]
+    GAP_Q -->|No| S6
+    S5B --> S6
+
+    S6[Step 6: Save Results]
+    S6 --> DONE([Excel / Markdown / Both / Skip])
+```
+
+---
+
+## Mermaid Detail
 
 ```mermaid
 flowchart TD
