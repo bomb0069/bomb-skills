@@ -1,5 +1,67 @@
 # Test Engineer Skill — Workflow
 
+## Summary (Single Screen)
+
+```
+                    ┌─────────────────────────────────────────────────────┐
+                    │           User provides requirement                  │
+                    └─────────────────────────────────────────────────────┘
+                                            │
+                    ┌───────────────────────┼───────────────────────┐
+                    ▼                       ▼                       ▼
+             Numeric/Time             Text/Dropdown           Status/Workflow
+                 BVA                      EP                      STT
+             Clarify:                 Clarify:
+          - Age → int/date?       - Generic label?
+          - Duration → int/date?    (ทั่วไป/Others)
+          - Money → precision?      Ask to split
+                    │                       │                       │
+                    └───────────────────────┴───────────────────────┘
+                                            │
+                           ┌────────────────┼────────────────┐
+                           ▼                ▼                ▼
+                        1 cond.         2+ cond.         2+ cond.
+                        skip            all EP           mixed/STT
+                                    All-EP diagram    Ask method:
+                                                      All / Pairwise /
+                                                      Business / Sequential /
+                                                      STT
+                                            │
+                                            ▼
+                    ┌─────────────────────────────────────────────────────┐
+                    │  Step 3  Per-condition: Diagram + Unit Test Cases    │
+                    │          BVA → 6 boundary values (TC-xx)            │
+                    │          EP  → 1 case per partition (TC-xx)         │
+                    │          STT → valid/invalid transitions (ST-xx)    │
+                    └─────────────────────────────────────────────────────┘
+                                            │
+                                            ▼
+                    ┌─────────────────────────────────────────────────────┐
+                    │  Step 4  Business Test Cases (BT-xx)                │
+                    │          Realistic valid AND invalid values          │
+                    └─────────────────────────────────────────────────────┘
+                                            │
+                                            ▼  (2+ conditions only)
+                    ┌─────────────────────────────────────────────────────┐
+                    │  Step 5  Combined Test Scenarios (TS-xx)            │
+                    │          Decision table across all conditions        │
+                    └─────────────────────────────────────────────────────┘
+                                            │
+                                            ▼  (if calculated output)
+                    ┌─────────────────────────────────────────────────────┐
+                    │  Step 5b  Gap Analysis                              │
+                    │           Compute output → flag hidden rules        │
+                    └─────────────────────────────────────────────────────┘
+                                            │
+                                            ▼
+                    ┌─────────────────────────────────────────────────────┐
+                    │  Step 6  Save Results                               │
+                    │          Excel · Markdown · Both · Skip             │
+                    └─────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Mermaid Diagram
 
 ```mermaid
