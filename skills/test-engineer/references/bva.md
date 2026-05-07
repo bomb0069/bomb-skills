@@ -15,6 +15,7 @@ If the precision/step size is NOT clear, ask the user before generating test cas
 
 **When ambiguous** — always ask:
 - **Age** — always ambiguous. Could be integer OR birthdate-calculated. Always ask.
+- **Duration fields** (tenure, period, term, service years, subscription length, contract duration, seniority, etc.) — always ambiguous. Could be integer (months/years) OR date-calculated from start date + reference date. Always ask.
 - **Money** — ambiguous unless decimals explicit. "30,000 baht" could be step 0.01, 1, or 100.
 - **Percentage** — could be integer or decimal.
 
@@ -70,7 +71,25 @@ Single boundary (3 points):
 
 ## Calculated Fields (Direct vs Indirect Input)
 
-When a condition depends on a calculation (e.g., age from birthdate):
+When a condition depends on a calculation where the user enters a **date** and the system derives a duration:
 - Split Input column into: `Input: {DirectField} (direct)` and `Input: {IndirectField} (indirect)`
 - Add `Calculated: {ResultField}` column
-- Direct = what user enters (birthdate), Indirect = reference value (transaction date)
+- Direct = what user enters (e.g., birthdate, hire date, start date), Indirect = reference value used in the calculation (e.g., transaction date, approval date, today's date)
+- Boundary values shift by **1 day** around the cutoff date
+
+**Common date-calculated duration patterns:**
+
+| Duration field | Direct input | Indirect input | Calculated |
+|---|---|---|---|
+| Age | Birthdate | Transaction date | Age (years + days) |
+| Work tenure / seniority | Hire date | Evaluation date | Years of service |
+| Loan / contract term | Start date | End date or approval date | Duration (months) |
+| Subscription period | Subscription start date | Renewal/check date | Active months |
+| Probation period | Employment start date | Review date | Probation months |
+
+**Step size**: 1 day (boundary values are ±1 day from the cutoff date)
+
+**Boundary date formula** — given a minimum duration D from reference date R:
+- Just below minimum: start date = R − D + 1 day (not yet reached D)
+- At minimum: start date = R − D (exactly D)
+- Just above minimum: start date = R − D − 1 day (passed D by 1 day)

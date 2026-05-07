@@ -132,6 +132,59 @@ Assuming transaction date = **2026-03-28**:
 | TC-05 | Maximum age boundary | Born exactly 65 years ago. | 1961-03-28 | 2026-03-28 | 65y 0d | Valid - accepted |
 | TC-06 | Above maximum age | Born 1 day before cutoff. Over 65. | 1961-03-27 | 2026-03-28 | 65y 1d | Invalid - rejected |
 
+## Example: Date-Calculated Duration (Loan Tenure)
+
+**User prompt**: "Home loan: applicant must have been employed for at least 1 year. The user enters their hire date and the system calculates tenure as of the loan application date. Generate BVA test cases."
+
+**Output**:
+
+**Input Analysis**
+- Field: Work tenure (calculated from hire date)
+- Type: Calculated — direct input is hire date, indirect input is loan application date
+- Constraint: minimum 1 year of employment
+- Step: 1 day
+
+**BVA Test Cases**
+
+Assuming loan application date = **2026-05-07**:
+
+Cutoff hire date for exactly 1 year tenure = 2026-05-07 − 1 year = **2025-05-07**
+
+| ID | Name | Description | Input: Hire Date (direct) | Input: Application Date (indirect) | Calculated: Tenure | Expected Output |
+|---|---|---|---|---|---|---|
+| TC-01 | Below minimum tenure | Hired 1 day after cutoff — not yet 1 year employed. | 2025-05-08 | 2026-05-07 | 364d | Invalid - rejected |
+| TC-02 | Minimum tenure boundary | Hired exactly 1 year ago today — meets minimum exactly. | 2025-05-07 | 2026-05-07 | 1y 0d | Valid - accepted |
+| TC-03 | Just above minimum tenure | Hired 1 day before cutoff — tenure is 1 year and 1 day. | 2025-05-06 | 2026-05-07 | 1y 1d | Valid - accepted |
+
+**Business Test Cases (for acceptance/integration testing)**
+
+| ID | Name | Description | Input: Hire Date (direct) | Input: Application Date (indirect) | Calculated: Tenure | Expected Output |
+|---|---|---|---|---|---|---|
+| BT-01 | New employee attempt | Hired 3 months ago — far below 1 year. Common invalid case. | 2026-02-07 | 2026-05-07 | 3 months | Invalid - rejected |
+| BT-02 | One-year employee | Hired exactly 1 year ago — just meets the requirement. | 2025-05-07 | 2026-05-07 | 1y 0d | Valid - accepted |
+| BT-03 | Established employee | Hired 3 years ago — well within tenure requirement. | 2023-05-07 | 2026-05-07 | 3y 0d | Valid - accepted |
+| BT-04 | Long-service employee | Hired 10 years ago — typical senior employee applying for refinance. | 2016-05-07 | 2026-05-07 | 10y 0d | Valid - accepted |
+
+## Example: Date-Calculated Duration (Ambiguous — Ask First)
+
+**User prompt**: "Credit card: applicant must have at least 6 months of work experience. Generate BVA test cases."
+
+**Output**:
+
+**Input Analysis**
+- Field: Work experience
+- Constraint: at least 6 months
+- Precision: **unclear — need to clarify**
+
+Before I generate test cases, I need to clarify how your system captures work experience:
+
+| If the input is... | Step size | Boundary just below 6 months | At 6 months | Just above 6 months |
+|---|---|---|---|---|
+| Integer (whole months) | 1 month | 5 | 6 | 7 |
+| Hire date (date-calculated) | 1 day | 5m 29d | 6m 0d | 6m 1d |
+
+*[Then call `AskUserQuestion` with header "Work exp", question "How does your system capture work experience?", and options: "Whole months" (user enters integer, step = 1 month), "Hire date" (user enters hire date, system calculates from today, step = 1 day)]*
+
 ## Example: Multiple Conditions (Combined Test Scenarios)
 
 **User prompt**: "Personal loan: age 20-60 (integer) AND salary 15000-200000 (integer, Thai Baht). Generate test cases."
